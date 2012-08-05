@@ -10,8 +10,10 @@ let s:winrestcmd = ''
 let s:selected = 0
 let s:prompt_input = ''
 let s:prev_prompt_input = ''
-let s:index = 0
+let s:index = 0 " s:candidates index
+let s:candidates = []
 let s:downtime_timeout = 50
+let s:show_scores = 1
 
 function! probe#open(scan_func)
     unlet! s:scan_func
@@ -51,7 +53,9 @@ function! probe#open(scan_func)
     cal prompt#map_key('<c-s>', 'probe#accept_split')
     cal prompt#map_key('<c-v>', 'probe#accept_vsplit')
     cal prompt#map_key('<F5>', 'probe#refresh_file_cache')
-    cal prompt#map_key('<F6>', 'probe#noop')
+
+    " TODO statusline
+    let s:scores = repeat([0], s:max_height) "TODO
 
     cal prompt#open({
         \ 'accept': function('probe#accept'),
@@ -59,11 +63,11 @@ function! probe#open(scan_func)
         \ 'change': function('probe#on_prompt_change'),
     \ })
     let s:candidates = s:scan_func()
-    let s:matches = s:candidates
+    let s:matches = s:candidates[: s:max_height-1]
     let s:selected = 0
-    let s:index = 0
+    let s:index = s:max_height
     cal s:print_matches()
-    cal s:register_downtime_autocmd()
+    "cal s:register_downtime_autocmd()
 endfunction
 
 function! s:register_downtime_autocmd()
@@ -73,7 +77,10 @@ function! s:register_downtime_autocmd()
     au CursorHold <buffer> cal s:find_matches_during_downtime()
 endfunction
 
-function! probe#noop()
+function! s:update_statusline()
+    let percent_searched = float2nr((100.0 * s:index) / len(s:candidates))
+    exe printf('setlocal stl=--probe--%%=%d\ matches\ out\ of\ %d\ (%d%%%%\ searched)',
+        \ len(s:matches), len(s:candidates), percent_searched)
 endfunction
 
 function! s:set_local_options()
@@ -208,37 +215,99 @@ function! s:select_appropriate_window()
     endwhile
 endfunction
 
-let s:downtime_chunk_size = 500
-function! s:find_matches_during_downtime()
-    if len(s:prompt_input) == 0
-        return
-    endif
-    let [fresh_matches, s:index] = s:match(s:prompt_input, s:candidates, s:index, -1, s:downtime_chunk_size)
-    "echo printf('Got %d matches.', len(fresh_matches))
-    cal extend(s:matches, fresh_matches)
-    " Send a do-nothing key to restart the CursorHold timer.
-    call feedkeys("\<F6>")
+let s:path_separators = '/'
+function! s:score_match(pattern, match)
+" Score a match based on how close pattern characters match to path separators,
+" other pattern characters, and the end of the match.
+    let pattern = split(a:pattern, '\zs')
+    let match = split(a:match, '\zs')
+    let p_i = 0
+    let m_i = 0
+    let path_sep_dist = 0
+    let char_match_dist = 100
+    let score = 0
+    while p_i < len(pattern) && m_i < len(match)
+        let p_c = pattern[p_i]
+        let m_c = match[m_i]
+
+        let is_match = p_c == m_c
+
+        if is_match
+            let score += path_sep_dist == 0
+            let score += char_match_dist == 0
+            let score += m_i == (len(match) - 1)
+        endif
+
+        let is_path_sep = stridx(s:path_separators, m_c) != -1
+        let path_sep_dist = is_path_sep ? 0 : path_sep_dist + 1
+        let char_match_dist = is_match ? 0 : char_match_dist + 1
+        let m_i += 1
+        let p_i += is_match
+    endwhile
+    return score
 endfunction
 
+function! s:sort_matches_by_score(matches)
+    let rankings = []
+    for match in a:matches
+        let score = s:score_match(s:prompt_input, match)
+        cal add(rankings, [score, match])
+    endfor
+    let sorted = []
+    let s:scores = []
+    for pair in sort(rankings, function('s:ranking_compare'))
+        cal add(sorted, pair[1])
+        cal add(s:scores, pair[0])
+    endfor
+    return sorted
+endfunction
+
+function! s:ranking_compare(a, b)
+    return a:b[0] - a:a[0]
+endfunction
+
+let s:match_cache = {}
+let s:match_cache_order = []
+let s:max_match_cache_size = 100
 function! s:update_matches()
-    if len(s:prompt_input) >= len(s:prev_prompt_input)
-        let s:matches = s:match(s:prompt_input, s:matches, 0, s:max_height, 0)[0]
+    if has_key(s:match_cache, s:prompt_input)
+        let [s:matches, s:index] = s:match_cache[s:prompt_input]
     else
+        cal s:find_new_matches()
+    endif
+
+    if len(s:prompt_input) > 0
+        let s:match_cache[s:prompt_input] = [s:matches, s:index]
+        cal add(s:match_cache_order, s:prompt_input)
+    endif
+    if len(s:match_cache) > s:max_match_cache_size
+        unlet s:match_cache[s:match_cache_order[0]]
+        let s:match_cache_order = s:match_cache_order[1:]
+    endif
+
+    let s:selected = 0
+    let s:matches = s:sort_matches_by_score(s:matches)
+    cal s:print_matches()
+endfunction
+
+function! s:find_new_matches()
+    if len(s:prompt_input) >= len(s:prev_prompt_input)
+        " See if the old matches are still valid.
+        let s:matches = s:match(s:prompt_input, s:matches, 0, s:max_height)[0]
+    else
+        " Search is wider, so we need to go through all the candidates again.
         let s:index = 0
         let s:matches = []
     endif
     if len(s:matches) < s:max_height
+        " Find any needed new matches.
         let needed = s:max_height - len(s:matches)
-        let [fresh_matches, s:index] = s:match(s:prompt_input, s:candidates, s:index, needed, 0)
+        let [fresh_matches, s:index] = s:match(s:prompt_input, s:candidates, s:index, needed)
         cal extend(s:matches, fresh_matches)
     endif
-
-    let s:selected = 0
-    cal s:print_matches()
 endfunction
 
-function! s:match(pattern, candidates, start, needed, size)
-    let size = a:size == 0 ? len(a:candidates) : a:size
+function! s:match(pattern, candidates, start, needed)
     let needed = a:needed < 0 ? len(a:candidates) : a:needed
 
     let pattern = a:pattern
@@ -250,7 +319,7 @@ function! s:match(pattern, candidates, start, needed, size)
 
     let matches = []
     let i = a:start
-    while i < len(a:candidates) && len(matches) < needed && i - a:start < size
+    while i < len(a:candidates) && len(matches) < needed
         let candidate = a:candidates[i]
         if candidate =~? pattern
             cal add(matches, candidate)
@@ -289,25 +358,32 @@ function! s:print_matches()
     let i = 1
     while i <= s:height
         let prefix = s:height-i == s:selected ? '> ' : '  '
-        cal setline(i, prefix . s:matches[s:height-i])
+        let match = s:matches[s:height - i]
+        let score = s:scores[s:height - i]
+        if s:show_scores
+            let line = printf('%s%d %s', prefix, score, match)
+        else
+            let line = prefix . match
+        endif
+        cal setline(i, line)
         let i += 1
     endwhile
     cal cursor(s:height - s:selected, 1)
+    cal s:update_statusline()
 endfunction
 
-let s:caches = {}
-let s:cache_order = []
-let s:max_cache_size = 10000
+let s:file_caches = {}
+let s:file_cache_order = []
+let s:max_file_cache_size = 30000
 let s:max_depth = 15
-let s:max_caches = 1
-let s:cache_dir = expand('$HOME/.probe_cache')
+let s:max_file_caches = 1
+let s:file_cache_dir = expand('$HOME/.probe_cache')
 
+" Escaping entire paths to use as cache filenames seemed tricky and ugly
+" and vim doesn't support bitwise operations, so multiplicative hashing
+" looked attractive.
 function! s:rshash(string)
     " Robert Sedgwick's hash function from Algorithms in C.
-    "
-    " Escaping entire paths to use as cache filenames seemed tricky and ugly
-    " and vim doesn't support bitwise operations, so multiplicative hashing
-    " looked attractive.
 
     let b = 378551
     let a = 63689
@@ -320,12 +396,12 @@ function! s:rshash(string)
 endfunction
 
 function! s:cache_filepath(dir)
-    return printf('%s/%x', s:cache_dir, s:rshash(a:dir))
+    return printf('%s/%x', s:file_cache_dir, s:rshash(a:dir))
 endfunction
 
 function! s:save_cache(dir, files)
-    if !isdirectory(s:cache_dir)
-        cal mkdir(s:cache_dir)
+    if !isdirectory(s:file_cache_dir)
+        cal mkdir(s:file_cache_dir)
     endif
     cal writefile(a:files, s:cache_filepath(a:dir))
 endfunction
@@ -333,48 +409,43 @@ endfunction
 function! probe#scan_files()
     let dir = getcwd()
     " use cache if possible
-    if has_key(s:caches, dir)
-        return s:caches[dir]
+    if has_key(s:file_caches, dir)
+        return s:file_caches[dir]
     endif
     let cache_filepath = s:cache_filepath(dir)
     if g:probe_persist_cache && filereadable(cache_filepath)
-        let s:caches[dir] = readfile(cache_filepath)
-        return s:caches[dir]
+        let s:file_caches[dir] = readfile(cache_filepath)
+        return s:file_caches[dir]
     endif
 
     " init new cache
-    if !has_key(s:caches, dir)
-        let s:caches[dir] = []
-        cal add(s:cache_order, dir)
+    if !has_key(s:file_caches, dir)
+        let s:file_caches[dir] = []
+        cal add(s:file_cache_order, dir)
     endif
 
     " pare caches
-    if len(s:caches) > s:max_caches
-        unlet s:caches[s:cache_order[0]]
-        let s:cache_order = s:cache_order[1:]
+    if len(s:file_caches) > s:max_file_caches
+        unlet s:file_caches[s:file_cache_order[0]]
+        let s:file_cache_order = s:file_cache_order[1:]
     endif
 
     " recursively scan for files
-    let s:caches[dir] = s:scan_files(dir, [], 0)
-
-    " pare the current cache
-    if len(s:caches[dir]) > s:max_cache_size
-        let start = len(s:caches[dir]) - s:max_cache_size
-        let s:caches[dir] = s:caches[dir][start:]
-    endif
+    let s:file_caches[dir] = s:scan_files(dir, [], 0)
 
     if g:probe_persist_cache
-        cal s:save_cache(dir, s:caches[dir])
+        cal s:save_cache(dir, s:file_caches[dir])
     endif
 
     cal prompt#render()
-    return s:caches[dir]
+    return s:file_caches[dir]
 endfunction
 
 function! probe#refresh_file_cache()
     let dir = getcwd()
-    unlet s:caches[dir]
+    unlet! s:file_caches[dir]
     cal delete(s:cache_filepath(dir))
+    let s:match_cache = {}
     cal probe#scan_files()
     cal s:update_matches()
 endfunction
@@ -389,6 +460,9 @@ function! s:scan_files(dir, files, current_depth)
     redraw
     echo "Scanning " . a:dir
     for name in split(globpath(a:dir, '*', 1), '\n')
+        if len(a:files) >= s:max_file_cache_size
+            break
+        endif
         if s:match_some(name, g:probe_ignore_files)
             continue
         endif
