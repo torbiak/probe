@@ -1,20 +1,50 @@
-let s:height = 0
-let s:matches = []
+" Max window
 let s:max_height = 10
+let s:height = 0
 let s:location = 'botright'
 let s:bufname = '--probe--'
-let s:bufnr = -1
 let s:selection_marker = '> '
 let s:marker_length = len(s:selection_marker)
-let s:winrestcmd = ''
+let s:bufnr = -1
+
+" Matching
+let s:candidates = []
+let s:index = 0 " s:candidates index
+let s:matches = []
 let s:selected = 0
 let s:prompt_input = ''
 let s:prev_prompt_input = ''
-let s:index = 0 " s:candidates index
-let s:candidates = []
-let s:downtime_timeout = 50
-let s:show_scores = 1
 let s:ignore_case = '\c'
+let s:show_scores = 1
+
+" File caching
+let s:file_caches = {}
+let s:file_cache_order = []
+let s:max_file_cache_size = 90000
+let s:max_depth = 15
+let s:max_file_caches = 1
+let s:file_cache_dir = expand('$HOME/.probe_cache')
+
+" Character-wise caching.
+let s:match_cache = {}
+let s:match_cache_order = []
+let s:max_match_cache_size = 200
+
+" Variables for saving global options.
+let s:timeoutlen = 0
+let s:report = 0
+let s:sidescroll = 0
+let s:sidescrolloff = 0
+let s:timeout = 0
+let s:equalalways = 0
+let s:hlsearch = 0
+let s:insertmode = 0
+let s:showcmd = 0
+
+let s:winrestcmd = '' " For saving window sizes.
+
+" Scoring
+let s:path_separators = '/'
 
 function! probe#open(scan_func)
     unlet! s:scan_func
@@ -30,7 +60,6 @@ function! probe#open(scan_func)
     set sidescroll=0     " don't sidescroll in jumps
     set sidescrolloff=0  " don't sidescroll automatically
     set noequalalways    " don't auto-balance window sizes
-    let &updatetime = s:downtime_timeout
 
     if s:bufnr == -1
         exe printf('silent! %s 1split %s', s:location, s:bufname)
@@ -40,8 +69,6 @@ function! probe#open(scan_func)
         exe printf('silent! %s sbuffer %d', s:location, s:bufnr)
         resize 1
     endif
-
-    " TODO syntax highlighting for matches
 
     " Always cleanup, regardless how the buffer is left.
     " (eg. <C-W q>, <C-W k>, etc)
@@ -55,8 +82,7 @@ function! probe#open(scan_func)
     cal prompt#map_key('<c-v>', 'probe#accept_vsplit')
     cal prompt#map_key('<F5>', 'probe#refresh_file_cache')
 
-    " TODO statusline
-    let s:scores = repeat([0], s:max_height) "TODO
+    let s:scores = repeat([0], s:max_height)
 
     highlight link ProbeNoMatches Error
     highlight link ProbeMatch Search
@@ -71,14 +97,6 @@ function! probe#open(scan_func)
     let s:selected = 0
     let s:index = s:max_height
     cal s:print_matches()
-    "cal s:register_downtime_autocmd()
-endfunction
-
-function! s:register_downtime_autocmd()
-    if !has('autocmd')
-        return
-    endif
-    au CursorHold <buffer> cal s:find_matches_during_downtime()
 endfunction
 
 function! s:update_statusline()
@@ -108,17 +126,6 @@ function! s:set_local_options()
         setlocal norelativenumber
     endif
 endfunction
-
-
-let s:timeoutlen = 0
-let s:report = 0
-let s:sidescroll = 0
-let s:sidescrolloff = 0
-let s:timeout = 0
-let s:equalalways = 0
-let s:hlsearch = 0
-let s:insertmode = 0
-let s:showcmd = 0
 
 function! s:save_options()
     let s:timeoutlen = &timeoutlen
@@ -165,14 +172,6 @@ function! probe#close()
     " Since prompt isn't being closed the status line needs to be cleared.
     redraw
     echo
-endfunction
-
-function! s:buflist()
-    let buflist = []
-    for i in range(tabpagenr('$'))
-       call extend(buflist, tabpagebuflist(i + 1))
-    endfor
-    return buflist
 endfunction
 
 function! probe#accept()
@@ -223,7 +222,6 @@ function! s:select_appropriate_window()
     endwhile
 endfunction
 
-let s:path_separators = '/'
 function! s:score_match(pattern, match)
 " Score a match based on how close pattern characters match to path separators,
 " other pattern characters, and the end of the match.
@@ -271,12 +269,19 @@ function! s:sort_matches_by_score(matches)
 endfunction
 
 function! s:ranking_compare(a, b)
-    return a:b[0] - a:a[0]
+" Sort [<score>, <match>] pairs by score and match length.
+"
+" It seems like shorter filenames tend to be what's desired, possibly due to
+" the higher probability of an unintended match on a long filename, so for
+" groups with the same score put the short filenames first.
+    let score_delta = a:b[0] - a:a[0]
+    if score_delta != 0
+        return score_delta
+    endif
+    let length_delta = len(a:a[1]) - len(a:b[1])
+    return length_delta
 endfunction
 
-let s:match_cache = {}
-let s:match_cache_order = []
-let s:max_match_cache_size = 100
 function! s:update_matches()
     if has_key(s:match_cache, s:prompt_input)
         let [s:matches, s:index] = s:match_cache[s:prompt_input]
@@ -316,14 +321,14 @@ function! s:find_new_matches()
     endif
 endfunction
 
+" Easy to add other matching strategies, but the syntax highlighting would need
+" to be different for each.
 function! s:pattern(prompt_input)
-    let pattern = s:ignore_case
-    if stridx(a:prompt_input, ' ') != -1
-        let pattern .= substitute(a:prompt_input, ' \+', '.*', 'g')
-    else
-        let pattern .= join(split(a:prompt_input, '\zs'), '.*')
-    endif
-    return pattern
+    let pattern = [s:ignore_case, '^']
+    for c in split(a:prompt_input, '\zs')
+        cal add(pattern, printf('[^%s]*%s', c, c))
+    endfor
+    return join(pattern, '')
 endfunction
 
 function! s:match(pattern, candidates, start, needed)
@@ -386,27 +391,23 @@ function! s:print_matches()
 endfunction
 
 function! s:highlight_matches()
-" Adds syntax matches to help visualize what's being matched. Its accuracy
-" depends on the matching strategy (s:pattern), of course.
+" Adds syntax matches to help visualize what's being matched.
+"
+" The accuracy of the highlighting depends on how closely it mimics the
+" matching strategy (ie. the result of s:pattern), of course.
+"
+" For each character in the prompt input add a highlight match (matchadd) for
+" its first occurence in the filename.
     cal clearmatches()
     let i = 0
-    let chars = split(s:prompt_input, '\zs')
-    while i < len(chars)
-        let c = chars[i]
-        let preceding = join(chars[:i], '.*')
-        let pattern = printf('\v%s(%s)@<=%s', s:ignore_case, preceding, c)
-        echom pattern
+    while i < len(s:prompt_input)
+        let preceding_chars = i == 0 ? '' : s:prompt_input[:i-1]
+        let c = s:prompt_input[i]
+        let pattern = printf('\v(%s[^%s]*)@<=%s', s:pattern(preceding_chars), c, c)
         cal matchadd('ProbeMatch', pattern)
         let i += 1
     endwhile
 endfunction
-
-let s:file_caches = {}
-let s:file_cache_order = []
-let s:max_file_cache_size = 90000
-let s:max_depth = 15
-let s:max_file_caches = 1
-let s:file_cache_dir = expand('$HOME/.probe_cache')
 
 " Escaping entire paths to use as cache filenames seemed tricky and ugly
 " and vim doesn't support bitwise operations, so multiplicative hashing
