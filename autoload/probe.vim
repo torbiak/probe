@@ -14,6 +14,7 @@ let s:index = 0 " s:candidates index
 let s:candidates = []
 let s:downtime_timeout = 50
 let s:show_scores = 1
+let s:ignore_case = '\c'
 
 function! probe#open(scan_func)
     unlet! s:scan_func
@@ -56,6 +57,9 @@ function! probe#open(scan_func)
 
     " TODO statusline
     let s:scores = repeat([0], s:max_height) "TODO
+
+    highlight link ProbeNoMatches Error
+    highlight link ProbeMatch Search
 
     cal prompt#open({
         \ 'accept': function('probe#accept'),
@@ -172,18 +176,22 @@ function! s:buflist()
 endfunction
 
 function! probe#accept()
-    cal probe#close()
-    cal s:open_file(s:matches[s:selected], '')
+    cal s:accept('')
 endfunction
 
 function! probe#accept_split()
-    cal probe#close()
-    cal s:open_file(s:matches[s:selected], 'split')
+    cal s:accept('split')
 endfunction
 
 function! probe#accept_vsplit()
+    cal s:accept('vsplit')
+endfunction
+
+function! s:accept(split)
     cal probe#close()
-    cal s:open_file(s:matches[s:selected], 'vsplit')
+    if !empty(s:matches)
+        cal s:open_file(s:matches[s:selected], a:split)
+    endif
 endfunction
 
 function! s:open_file(filepath, split)
@@ -291,9 +299,10 @@ function! s:update_matches()
 endfunction
 
 function! s:find_new_matches()
+    let pattern = s:pattern(s:prompt_input)
     if len(s:prompt_input) >= len(s:prev_prompt_input)
         " See if the old matches are still valid.
-        let s:matches = s:match(s:prompt_input, s:matches, 0, s:max_height)[0]
+        let s:matches = s:match(pattern, s:matches, 0, s:max_height)[0]
     else
         " Search is wider, so we need to go through all the candidates again.
         let s:index = 0
@@ -302,26 +311,29 @@ function! s:find_new_matches()
     if len(s:matches) < s:max_height
         " Find any needed new matches.
         let needed = s:max_height - len(s:matches)
-        let [fresh_matches, s:index] = s:match(s:prompt_input, s:candidates, s:index, needed)
+        let [fresh_matches, s:index] = s:match(pattern, s:candidates, s:index, needed)
         cal extend(s:matches, fresh_matches)
     endif
+endfunction
+
+function! s:pattern(prompt_input)
+    let pattern = s:ignore_case
+    if stridx(a:prompt_input, ' ') != -1
+        let pattern .= substitute(a:prompt_input, ' \+', '.*', 'g')
+    else
+        let pattern .= join(split(a:prompt_input, '\zs'), '.*')
+    endif
+    return pattern
 endfunction
 
 function! s:match(pattern, candidates, start, needed)
     let needed = a:needed < 0 ? len(a:candidates) : a:needed
 
-    let pattern = a:pattern
-    if stridx(pattern, ' ') != -1
-        let pattern = substitute(pattern, ' \+', '.*', 'g')
-    else
-        let pattern = substitute(pattern, '\zs', '.*', 'g')
-    endif
-
     let matches = []
     let i = a:start
     while i < len(a:candidates) && len(matches) < needed
         let candidate = a:candidates[i]
-        if candidate =~? pattern
+        if candidate =~? a:pattern
             cal add(matches, candidate)
         endif
         let i += 1
@@ -370,11 +382,28 @@ function! s:print_matches()
     endwhile
     cal cursor(s:height - s:selected, 1)
     cal s:update_statusline()
+    cal s:highlight_matches()
+endfunction
+
+function! s:highlight_matches()
+" Adds syntax matches to help visualize what's being matched. Its accuracy
+" depends on the matching strategy (s:pattern), of course.
+    cal clearmatches()
+    let i = 0
+    let chars = split(s:prompt_input, '\zs')
+    while i < len(chars)
+        let c = chars[i]
+        let preceding = join(chars[:i], '.*')
+        let pattern = printf('\v%s(%s)@<=%s', s:ignore_case, preceding, c)
+        echom pattern
+        cal matchadd('ProbeMatch', pattern)
+        let i += 1
+    endwhile
 endfunction
 
 let s:file_caches = {}
 let s:file_cache_order = []
-let s:max_file_cache_size = 30000
+let s:max_file_cache_size = 90000
 let s:max_depth = 15
 let s:max_file_caches = 1
 let s:file_cache_dir = expand('$HOME/.probe_cache')
