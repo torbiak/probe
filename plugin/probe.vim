@@ -1,5 +1,6 @@
 if exists('g:probe_loaded')
-    finish
+    "TODO
+    "finish 
 endif
 let g:probe_loaded = 1
 
@@ -13,4 +14,15 @@ if !exists('g:probe_persist_cache')
     let g:probe_persist_cache = 1
 endif
 
-command! ProbeFindFile :cal probe#open(function('probe#scan_files'))
+command! Probe :cal probe#open(
+    \ function('probe#file#scan'), 
+    \ function('probe#file#open'),
+    \ function('probe#file#refresh'))
+command! ProbeFindFile :cal probe#open(
+    \ function('probe#file#scan'), 
+    \ function('probe#file#open'),
+    \ function('probe#file#refresh'))
+command! ProbeFindBuffer :cal probe#open(
+    \ function('probe#buffer#scan'), 
+    \ function('probe#buffer#open'),
+    \ function('probe#buffer#refresh'))
