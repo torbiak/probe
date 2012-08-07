@@ -15,7 +15,7 @@ let s:selected = 0
 let s:prompt_input = ''
 let s:prev_prompt_input = ''
 let s:ignore_case = '\c'
-let s:show_scores = 1
+let s:show_scores = 0
 
 " Character-wise caching
 let s:match_cache = {}
