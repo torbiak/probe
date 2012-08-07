@@ -24,22 +24,22 @@ window max height).
 
 Key Mappings
 ============
-Previous match: C-p
-Next match: C-n
+* Previous match: C-p
+* Next match: C-n
 
-Open current match: Enter
-Open in split: C-s
-Open in vsplit: C-v
-Cancel: C-c
-Refresh cache: F5
+* Open current match: Enter
+* Open in split: C-s
+* Open in vsplit: C-v
+* Cancel: C-c
+* Refresh cache: F5
 
-Beginning of line: C-a
-End of line: C-e
-Delete to end of line: C-k
-Delete to beginning of line: C-u
-Cursor right: C-f or Right
-Cursor left: C-b or Left
-Delete: Del or C-d
+* Beginning of line: C-a
+* End of line: C-e
+* Delete to end of line: C-k
+* Delete to beginning of line: C-u
+* Cursor right: C-f or Right
+* Cursor left: C-b or Left
+* Delete: Del or C-d
 
 Install
 =======
@@ -61,5 +61,5 @@ v7.3.
 Unimplemented Features
 ======================
 searching for a VCS meta-directory and using the VCS to get file information
-    - allows searching an entire project without requiring vim's working
+    * allows searching an entire project without requiring vim's working
       directory to be the project's root
