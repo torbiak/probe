@@ -115,10 +115,10 @@ endfunction
 function! s:setup_matches()
     let s:scores = repeat([0], s:max_height)
     let s:candidates = g:Probe_scan()
-    let s:matches = s:candidates[: s:max_height-1]
+    let s:matches = s:sort_matches_by_score(s:candidates[: s:max_height-1])
     let s:selected = 0
     let s:index = s:max_height
-    cal s:print_matches()
+    cal s:render()
 endfunction
 
 function! s:setup_highlighting()
@@ -189,18 +189,20 @@ endfunction
 
 function! probe#select_next()
     let s:selected = s:selected <= 0 ? 0 : s:selected - 1
-    cal s:print_matches()
+    cal s:render()
 endfunction
 
 function! probe#select_prev()
     let s:selected = s:selected >= s:height-1 ? s:height-1 : s:selected + 1
-    cal s:print_matches()
+    cal s:render()
 endfunction
 
 function! probe#refresh_cache()
     let s:match_cache = {}
+    let s:matches = []
+    let s:index = 0
     cal g:Probe_refresh()
-    cal g:Probe_scan()
+    let s:candidates = g:Probe_scan()
     cal s:update_matches()
 endfunction
 
@@ -273,7 +275,7 @@ function! s:update_matches()
 
     let s:selected = 0
     let s:matches = s:sort_matches_by_score(s:matches)
-    cal s:print_matches()
+    cal s:render()
 endfunction
 
 function! s:find_new_matches()
@@ -379,15 +381,25 @@ function! s:pattern(prompt_input)
     return join(pattern, '')
 endfunction
 
-function! s:print_matches()
+function! s:render()
     silent %delete
     let s:height = min([len(s:matches), s:max_height])
-    exe printf('resize %d', s:height)
+    exe printf('resize %d', s:height > 0 ? s:height : 1)
+
     if empty(s:matches)
+        cal clearmatches()
         cal setline(1, '--NO MATCHES--')
-        return
+    else
+        cal s:print_matches()
+        cal cursor(s:height - s:selected, 1)
+        cal s:update_statusline()
+        cal s:highlight_matches()
     endif
 
+    cal s:update_statusline()
+endfunction
+
+function! s:print_matches()
     let i = 1
     while i <= s:height
         let prefix = s:height-i == s:selected ? '> ' : '  '
@@ -401,9 +413,6 @@ function! s:print_matches()
         cal setline(i, line)
         let i += 1
     endwhile
-    cal cursor(s:height - s:selected, 1)
-    cal s:update_statusline()
-    cal s:highlight_matches()
 endfunction
 
 function! s:update_statusline()
