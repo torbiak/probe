@@ -2,7 +2,6 @@
 let s:file_caches = {}
 let s:file_cache_order = []
 let s:max_file_cache_size = 90000
-let s:max_depth = 15
 let s:max_file_caches = 1
 let s:file_cache_dir = expand('$HOME/.probe_cache')
 
@@ -32,7 +31,7 @@ function! probe#file#scan()
     endif
 
     " recursively scan for files
-    let s:file_caches[dir] = s:scan_files(dir, [], 0)
+    let s:file_caches[dir] = s:scan_files(dir, [], 0, {})
 
     if g:probe_persist_cache
         cal s:save_cache(dir, s:file_caches[dir])
@@ -57,10 +56,16 @@ function! probe#file#refresh()
 endfunction
 
 
-function! s:scan_files(dir, files, current_depth)
-    " ignore dirs past max_depth
-    if a:current_depth > s:max_depth
-        return
+" Each directory is only scanned once, so if multiple symlinks link to the same
+" directory only filepaths via one of the symlinks will end up being returned.
+" Hopefully this isn't surprising. Other ways of dealing with circular symlinks
+" had more serious problems.
+function! s:scan_files(dir, files, current_depth, scanned_dirs)
+    let resolved_dir = resolve(fnamemodify(a:dir, ':p:h'))
+    if has_key(a:scanned_dirs, resolved_dir)
+        return a:files
+    else
+        let a:scanned_dirs[resolved_dir] = 1
     endif
 
     " scan dir recursively
@@ -74,7 +79,7 @@ function! s:scan_files(dir, files, current_depth)
             continue
         endif
         if isdirectory(name)
-            cal s:scan_files(name, a:files, a:current_depth+1)
+            cal s:scan_files(name, a:files, a:current_depth+1, a:scanned_dirs)
             continue
         endif
         cal add(a:files, fnamemodify(name, ':.'))
@@ -85,7 +90,7 @@ endfunction
 
 function! s:match_some(str, patterns)
     for pattern in a:patterns
-        if match(a:str, pattern) != -1
+        if a:str =~# pattern
             return 1
         endif
     endfor
