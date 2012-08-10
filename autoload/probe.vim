@@ -24,7 +24,7 @@ let s:ignore_case = '\c'
 " Character-wise caching
 let s:match_cache = {}
 let s:match_cache_order = []
-let s:max_match_cache_size = 15
+let s:max_match_cache_size = 3
 
 " Variables for saving global options.
 let s:timeoutlen = 0
@@ -268,8 +268,11 @@ function! s:cache_matches()
         cal add(s:match_cache_order, pattern)
     endif
     if len(s:match_cache) > s:max_match_cache_size
-        unlet s:match_cache[s:match_cache_order[0]]
+        let oldest_key = s:match_cache_order[0]
         let s:match_cache_order = s:match_cache_order[1:]
+        if count(s:match_cache_order, oldest_key) == 0
+            cal remove(s:match_cache, oldest_key)
+        endif
     endif
 endfunction
 
@@ -292,6 +295,7 @@ function! s:update_matches()
     endif
     cal s:cache_matches()
 
+    " Scoring is expensive, so only do it after the search has been narrowed.
     if s:num_matches() < 400
         let sorted = s:sort_matches_by_score(getbufline(s:bufnr, 0, '$'))
         silent! %delete
@@ -392,11 +396,15 @@ function! s:ranking_compare(a, b)
 endfunction
 
 function! s:pattern(prompt_input)
-    let pattern = ['\V\^', s:ignore_case,]
-    for c in split(a:prompt_input, '\zs')
-        cal add(pattern, printf('\[^%s]\*%s', c, c))
-    endfor
-    return join(pattern, '')
+    if stridx(s:prompt_input, ' ') == -1
+        let pattern = ['\V\^', s:ignore_case]
+        for c in split(a:prompt_input, '\zs')
+            cal add(pattern, printf('\[^%s]\*%s', c, c))
+        endfor
+        return join(pattern, '')
+    else
+        return '\V' . s:ignore_case . join(split(a:prompt_input), '\.\*')
+    endif
 endfunction
 
 function! s:update_statusline()
@@ -414,19 +422,27 @@ function! s:highlight_matches()
 "
 " For each character in the prompt input add a highlight match (matchadd) for
 " its first occurence in the filename.
+    nohlsearch
     cal clearmatches()
     if s:num_matches() == 0
         return
     endif
 
-    let i = 0
-    while i < len(s:prompt_input)
-        let preceding_chars = i == 0 ? '' : s:prompt_input[:i-1]
-        let c = s:prompt_input[i]
-        let pattern = printf('\V\(%s\[^%s]\*\)\@<=%s', s:pattern(preceding_chars), c, c)
-        cal matchadd('ProbeMatch', pattern)
-        let i += 1
-    endwhile
+    if stridx(s:prompt_input, ' ') == -1
+        let i = 0
+        while i < len(s:prompt_input)
+            let preceding_chars = i == 0 ? '' : s:prompt_input[:i-1]
+            let c = s:prompt_input[i]
+            let pattern = printf('\V\(%s\[^%s]\*\)\@<=%s', s:pattern(preceding_chars), c, c)
+            cal matchadd('ProbeMatch', pattern)
+            let i += 1
+        endwhile
+    else
+        for token in split(s:prompt_input)
+            let pattern = printf('\v(.{-})@<=%s', s:pattern(token))
+            cal matchadd('ProbeMatch', pattern)
+        endfor
+    endif
 endfunction
 
 function! s:is_path_separator(char)
