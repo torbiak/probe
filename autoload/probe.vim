@@ -6,6 +6,8 @@ let s:bufname = '--probe--'
 let s:selection_marker = '> '
 let s:marker_length = len(s:selection_marker)
 let s:bufnr = -1
+let s:winnr = -1
+let s:no_matches_message = '--NO MATCHES--'
 
 " Matching
 " probe does an incremental search, but only scans the candidates once. It
@@ -15,19 +17,14 @@ let s:bufnr = -1
 " Invariant: s:matches must always hold any matches for s:prompt_input in
 " s:candidates[: s:index - 1].
 let s:candidates = []
-let s:index = 0 " s:candidates index
-let s:matches = []
-let s:scores = []
 let s:prompt_input = ''
 let s:prev_prompt_input = ''
-let s:selected = 0
 let s:ignore_case = '\c'
-let s:show_scores = 1
 
 " Character-wise caching
 let s:match_cache = {}
 let s:match_cache_order = []
-let s:max_match_cache_size = 200
+let s:max_match_cache_size = 15
 
 " Variables for saving global options.
 let s:timeoutlen = 0
@@ -40,6 +37,7 @@ let s:hlsearch = 0
 let s:insertmode = 0
 let s:showcmd = 0
 
+let s:last_pattern = ''
 let s:winrestcmd = '' " For saving window sizes.
 let s:saved_window_num = 0 " Previously active window.
 
@@ -70,12 +68,14 @@ function! probe#open(scan, open, refresh)
 
     cal s:create_cleanup_autocommands()
     cal s:map_keys()
-    cal s:setup_matches()
+    let s:candidates = g:Probe_scan()
+    cal s:reset_matches()
     cal s:setup_highlighting()
 endfunction
 
 function! s:save_vim_state()
     cal s:save_options()
+    let s:last_pattern = @/
     let s:winrestcmd = winrestcmd() " TODO: Support older versions of vim.
     let s:saved_window_num = winnr()
 endfunction
@@ -96,6 +96,7 @@ function! s:create_buffer()
     if s:bufnr == -1
         exe printf('silent! %s 1split %s', s:location, s:bufname)
         let s:bufnr = bufnr('%')
+        let s:winnr = winnr()
         cal s:set_local_options()
     else " still have the buffer from last time
         exe printf('silent! %s sbuffer %d', s:location, s:bufnr)
@@ -119,14 +120,6 @@ function! s:map_keys()
     cal prompt#map_key('<F5>',  'probe#refresh_cache')
     unmap <buffer> ;
     cal prompt#map_key(';',  'probe#score_all_matches')
-endfunction
-
-function! s:setup_matches()
-    let s:candidates = g:Probe_scan()
-    let s:matches = s:sort_matches_by_score(s:candidates[: s:max_height-1])
-    let s:selected = 0
-    let s:index = s:max_height
-    cal s:render()
 endfunction
 
 function! s:setup_highlighting()
@@ -185,6 +178,7 @@ endfunction
 
 function! probe#restore_vim_state()
     cal s:restore_options()
+    let @/ = s:last_pattern
     exe s:winrestcmd
     exe s:saved_window_num . 'wincmd w'
 endfunction
@@ -197,13 +191,13 @@ function! probe#on_prompt_change(prompt_input)
 endfunction
 
 function! probe#select_next()
-    let s:selected = s:selected <= 0 ? 0 : s:selected - 1
-    cal s:render()
+    normal! j
+    cal prompt#render()
 endfunction
 
 function! probe#select_prev()
-    let s:selected = s:selected >= s:height-1 ? s:height-1 : s:selected + 1
-    cal s:render()
+    normal! k
+    cal prompt#render()
 endfunction
 
 function! probe#refresh_cache()
@@ -237,8 +231,11 @@ function! probe#accept_nosplit()
 endfunction
 
 function! probe#accept(split)
+    " Need to get match information before closing the window.
+    let selection = s:selected_match()
+    let num_matches = s:num_matches()
     cal probe#close()
-    if !empty(s:matches)
+    if num_matches > 0
         cal s:select_appropriate_window()
         if a:split ==? 'split' || &modified
             split
@@ -246,7 +243,7 @@ function! probe#accept(split)
         if a:split ==? 'vsplit'
             vsplit
         endif
-        cal g:Probe_open(s:matches[s:selected])
+        cal g:Probe_open(selection)
     endif
 endfunction
 
@@ -264,20 +261,10 @@ function! s:select_appropriate_window()
     endwhile
 endfunction
 
-function! probe#score_all_matches()
-    if len(s:prompt_input) == 0
-        return
-    endif
-    let s:matches = s:sort_matches_by_score(s:find_all_matches())
-    cal s:cache_matches()
-    let s:selected = 0
-    cal s:render()
-endfunction
-
 function! s:cache_matches()
-    let pattern = s:pattern(s:prompt_input)
+    let pattern = s:prompt_input
     if len(s:prompt_input) > 0
-        let s:match_cache[pattern] = [s:matches, s:index]
+        let s:match_cache[pattern] = getbufline(s:bufnr, 0, '$')
         cal add(s:match_cache_order, pattern)
     endif
     if len(s:match_cache) > s:max_match_cache_size
@@ -286,54 +273,63 @@ function! s:cache_matches()
     endif
 endfunction
 
+function! s:filter()
+    if s:num_matches() > 0 && len(s:prompt_input) > 0
+        exe printf('silent! g!#%s#d', s:pattern(s:prompt_input))
+    endif
+endfunction
+
 function! s:update_matches()
-    let s:scores = []
-    let pattern = s:pattern(s:prompt_input)
-    if has_key(s:match_cache, pattern)
-        let [s:matches, s:index] = s:match_cache[pattern]
+    if has_key(s:match_cache, s:prompt_input)
+        silent! %delete
+        cal append('$', s:match_cache[s:prompt_input])
+        delete
     elseif s:is_search_narrower()
-        let s:matches = s:find_carryforward_matches()
-        let needed = s:max_height - len(s:matches)
-        let needed = needed > 0 ? needed : 0
-        cal extend(s:matches, s:find_new_matches(needed))
-        let s:matches = s:sort_matches_by_score(s:matches)
-        cal s:cache_matches()
+        cal s:filter()
     else
         cal s:reset_matches()
-        let s:matches = s:find_new_matches(s:max_height)
-        let s:matches = s:sort_matches_by_score(s:matches)
-        cal s:cache_matches()
+        cal s:filter()
+    endif
+    cal s:cache_matches()
+
+    if s:num_matches() < 400
+        let sorted = s:sort_matches_by_score(getbufline(s:bufnr, 0, '$'))
+        silent! %delete
+        cal append('$', sorted)
+        delete
     endif
 
-    let s:selected = 0
-    cal s:render()
+    if s:num_matches() == 0
+        cal setline(1, s:no_matches_message)
+    endif
+
+    exe printf('resize %d', min([s:num_matches(), s:max_height]))
+    cal s:update_statusline()
+    cal s:highlight_matches()
+    $
+    normal! zb
+endfunction
+
+function! s:num_matches()
+    if line('$') == 1 && getline(1) == ''
+        return 0
+    else
+        return line('$')
+    endif
+endfunction
+
+function! s:selected_match()
+    if s:num_matches() == 0
+        throw 'probe: no matches'
+    endif
+    return getline('.')
 endfunction
 
 function! s:reset_matches()
-    let s:index = 0
-    let s:matches = []
-    let s:scores = []
-endfunction
-
-function! s:find_all_matches()
-    let matches = s:find_carryforward_matches()
-    cal extend(matches, s:find_new_matches(-1))
-    return matches
-endfunction
-
-function! s:find_carryforward_matches()
-    " This function assumes that the entries in s:matches match the current
-    " prompt input.
-    let pattern = s:pattern(s:prompt_input)
-    return s:match(pattern, s:matches, 0, -1, s:max_height)[0]
-endfunction
-
-function! s:find_new_matches(count)
-    " This function assumes that s:index is consistent with s:matches and the
-    " prompt input.
-    let pattern = s:pattern(s:prompt_input)
-    let [new_matches, s:index] = s:match(pattern, s:candidates, s:index, -1, a:count)
-    return new_matches
+    resize 10
+    silent! %delete
+    cal append('$', s:candidates)
+    delete
 endfunction
 
 function! s:is_search_narrower()
@@ -343,48 +339,37 @@ function! s:is_search_narrower()
     return is_longer && appended_to_end
 endfunction
 
-function! s:match(pattern, candidates, start, stop, needed)
-    let needed = a:needed >= 0 ? a:needed : len(a:candidates)
-    let stop = a:stop > a:start ? a:stop : len(a:candidates)
-
-    let matches = []
-    let i = a:start
-    while i < len(a:candidates) && i < stop && len(matches) < needed
-        let candidate = a:candidates[i]
-        if candidate =~? a:pattern
-            cal add(matches, candidate)
-        endif
-        let i += 1
-    endwhile
-    return [matches, i]
-endfunction
-
-function! s:score_match(prompt_input, match)
+function! probe#score_match(pattern, match)
+" Score a match based on how close pattern characters match to path separators,
+" other pattern characters, and the end of the match.
+    let match = s:ignore_case == '\c' ? tolower(a:match) : a:matchk
     let score = 0
-    for token in split(a:prompt_input)
-        let pos = match(a:match, s:pattern(token))
-        if pos == 0
-            " at the beginning of the match
-            let score += 1
-        endif
+    let last_i = 0
+    let i = 0
 
-        if pos > 0 && s:is_path_separator(a:match[pos-1])
-            " right after a path separator
+    for char in split(a:pattern, '\zs')
+        let i = stridx(match, char, last_i)
+        if i == -1
+            return 0
+        endif
+        if i == 0 || s:is_path_separator(match[i - 1])
             let score += 1
         endif
-
-        if len(token) + pos == len(a:match)
-             " at the end of the match
+        if i == len(match) - 1
             let score += 1
         endif
+        if last_i && last_i == i - 1
+            let score += 1
+        endif
+        let last_i = i
     endfor
     return score
 endfunction
-
+        
 function! s:sort_matches_by_score(matches)
     let rankings = []
     for match in a:matches
-        let score = s:score_match(s:prompt_input, match)
+        let score = probe#score_match(s:prompt_input, match)
         cal add(rankings, [score, match])
     endfor
     let sorted = []
@@ -398,56 +383,27 @@ endfunction
 
 function! s:ranking_compare(a, b)
 " Sort [<score>, <match>] pairs by score, match length.
-    let score_delta = a:b[0] - a:a[0]
+    let score_delta = a:a[0] - a:b[0]
     if score_delta != 0
         return score_delta
     endif
-    let length_delta = len(a:a[1]) - len(a:b[1])
+    let length_delta = len(a:b[1]) - len(a:a[1])
     return length_delta
 endfunction
 
-function! s:pattern(prompt_input) " tokenwise
-    return '\V' . s:ignore_case . join(split(a:prompt_input), '\.\*')
-endfunction
-
-function! s:render()
-    silent %delete
-    let s:height = min([len(s:matches), s:max_height])
-    exe printf('resize %d', s:height > 0 ? s:height : 1)
-
-    if empty(s:matches)
-        cal clearmatches()
-        cal setline(1, '--NO MATCHES--')
-    else
-        cal s:print_matches()
-        cal cursor(s:height - s:selected, 1)
-        cal s:update_statusline()
-        cal s:highlight_matches()
-    endif
-
-    cal s:update_statusline()
-endfunction
-
-function! s:print_matches()
-    let i = 1
-    while i <= s:height
-        let prefix = s:height-i == s:selected ? '> ' : '  '
-        let match = s:matches[s:height - i]
-        if s:show_scores && !empty(s:scores)
-            let score = s:scores[s:height - i]
-            let line = printf('%s%d %s', prefix, score, match)
-        else
-            let line = prefix . match
-        endif
-        cal setline(i, line)
-        let i += 1
-    endwhile
+function! s:pattern(prompt_input)
+    let pattern = ['\V\^', s:ignore_case,]
+    for c in split(a:prompt_input, '\zs')
+        cal add(pattern, printf('\[^%s]\*%s', c, c))
+    endfor
+    return join(pattern, '')
 endfunction
 
 function! s:update_statusline()
-    let percent_searched = float2nr((100.0 * s:index) / len(s:candidates))
-    exe printf('setlocal stl=--probe--%%=%d\ matches\ out\ of\ %d\ (%d%%%%\ searched)',
-        \ len(s:matches), len(s:candidates), percent_searched)
+    "let percent_searched = float2nr((100.0 * s:index) / len(s:candidates))
+    "exe printf('setlocal stl=--probe--%%=%d\ matches\ out\ of\ %d\ (%d%%%%\ searched)',
+    "    \ len(s:matches), len(s:candidates), percent_searched)
+    exe printf('setlocal stl=--probe--%%=%d', line('$'))
 endfunction
 
 function! s:highlight_matches()
@@ -459,14 +415,18 @@ function! s:highlight_matches()
 " For each character in the prompt input add a highlight match (matchadd) for
 " its first occurence in the filename.
     cal clearmatches()
-    if empty(s:matches)
+    if s:num_matches() == 0
         return
     endif
 
-    for token in split(s:prompt_input)
-        let pattern = printf('\v(.{-})@<=%s', s:pattern(token))
+    let i = 0
+    while i < len(s:prompt_input)
+        let preceding_chars = i == 0 ? '' : s:prompt_input[:i-1]
+        let c = s:prompt_input[i]
+        let pattern = printf('\V\(%s\[^%s]\*\)\@<=%s', s:pattern(preceding_chars), c, c)
         cal matchadd('ProbeMatch', pattern)
-    endfor
+        let i += 1
+    endwhile
 endfunction
 
 function! s:is_path_separator(char)
