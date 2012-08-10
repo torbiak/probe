@@ -1,5 +1,4 @@
 " public function prefix. Depends on prompt.vim location under autoload/.
-let s:pre = 'prompt#'
 let s:hooks = {}
 let s:input = ''
 let s:pos = 0
@@ -12,7 +11,7 @@ function! s:map_keys()
     let punctuation = "<>`@#~!\"$%&/()=+*-_.,;:?\\\'{}[] " " and space
     for str in [lowercase, uppercase, numbers, punctuation]
         for key in split(str, '\zs')
-            cal {s:pre}map_key(printf('<Char-%d>', char2nr(key)), s:pre . 'handle_key', key)
+            cal prompt#map_key(printf('<Char-%d>', char2nr(key)), 'prompt#handle_key', key)
         endfor
     endfor
 
@@ -23,6 +22,7 @@ function! s:map_keys()
     let special = {
         \ 'accept'          : ['<CR>'],
         \ 'backspace'       : ['<BS>'],
+        \ 'backspace_word'  : ['<C-w>'],
         \ 'cancel'          : ['<C-c>', '<Esc>'],
         \ 'delete_to_start' : ['<C-u>'],
         \ 'delete_to_end'   : ['<C-k>'],
@@ -37,12 +37,12 @@ function! s:map_keys()
             if key ==? '<Esc>' && &term =~ '\v(screen|xterm|vt100)'
                 continue
             endif
-            cal {s:pre}map_key(key, s:pre . 'handle_event', hook_name)
+            cal prompt#map_key(key, 'prompt#handle_event', hook_name)
         endfor
     endfor
 endfunction
 
-function! {s:pre}map_key(key, func_name, ...)
+function! prompt#map_key(key, func_name, ...)
     let args = empty(a:000) ? '' : string(join(a:000, ", "))
     exec printf("noremap <silent> <buffer> %s :call %s(%s)<cr>", a:key, a:func_name, args)
 endfunction
@@ -54,7 +54,7 @@ function! s:split_input()
     return [left, cursor, right]
 endfunction
 
-function! {s:pre}render()
+function! prompt#render()
     redraw
     let [left, cursor, right] = s:split_input()
 
@@ -71,22 +71,22 @@ function! {s:pre}render()
     echon right
 endfunction
 
-function! {s:pre}handle_key(key)
+function! prompt#handle_key(key)
     let [left, cursor, right] = s:split_input()
     let s:input = left . a:key . cursor . right
     let s:pos += 1
-    cal {s:pre}render()
+    cal prompt#render()
     cal s:change_hook()
 endfunction
 
-function! {s:pre}handle_event(hook)
-    exec printf('cal %s%s()', s:pre, a:hook)
+function! prompt#handle_event(hook)
+    exec printf('cal prompt#%s()', a:hook)
     if has_key(s:hooks, a:hook)
         cal s:hooks[a:hook]()
     endif
 endfunction
 
-function! {s:pre}open(hooks)
+function! prompt#open(hooks)
     " a:hooks - dict of funcrefs. eg.
     "   {'accept': function('myAccept'), 'change': function('myChange')}
     "   accept - <enter>
@@ -95,10 +95,10 @@ function! {s:pre}open(hooks)
     cal s:map_keys()
     let s:input = ''
     let s:pos = 0
-    cal {s:pre}render()
+    cal prompt#render()
 endfunction
 
-function! {s:pre}close()
+function! prompt#close()
     redraw
     echo
     mapclear <buffer>
@@ -110,67 +110,93 @@ function! s:change_hook()
     endif
 endfunction
 
-function! {s:pre}accept()
-    cal {s:pre}close()
+function! prompt#accept()
+    cal prompt#close()
 endfunction
 
-function! {s:pre}backspace()
+function! prompt#backspace()
     if s:pos > 1
         let s:input = s:input[: s:pos-2] . s:input[s:pos :]
     else
         let s:input = s:input[s:pos :]
     endif
     let s:pos = s:pos == 0 ? 0 : s:pos-1
-    cal {s:pre}render()
+    cal prompt#render()
     cal s:change_hook()
 endfunction
 
-function! {s:pre}cancel()
-    cal {s:pre}close()
+function! prompt#backspace_word()
+" Delete the space-delimited word preceding the cursor, plus any spaces
+" between the word and the cursor.
+    if s:input == ''
+        return
+    end
+
+    let new_pos = s:pos - 1
+    while new_pos > 0 && s:input[new_pos] == ' '
+        let new_pos -= 1
+    endwhile
+    while new_pos > 0 && s:input[new_pos] != ' '
+        let new_pos -= 1
+    endwhile
+
+    let s:input = s:input[:new_pos] . s:input[s:pos :]
+    let s:pos = new_pos + 1
+    if new_pos == 0
+        let s:input = ''
+        let s:pos = 0
+    endif
+
+    cal prompt#render()
+    cal s:change_hook()
 endfunction
 
-function! {s:pre}delete_to_start()
+function! prompt#cancel()
+    cal prompt#close()
+endfunction
+
+function! prompt#delete_to_start()
     let s:input = s:input[s:pos :]
     let s:pos = 0
-    cal {s:pre}render()
+    cal prompt#render()
     cal s:change_hook()
 endfunction
 
-function! {s:pre}delete_to_end()
+function! prompt#delete_to_end()
     let s:input = s:pos == 0 ? '' : s:input[: s:pos-1]
     let s:pos = len(s:input)
-    cal {s:pre}render()
+    cal prompt#render()
     cal s:change_hook()
 endfunction
 
-function! {s:pre}cursor_end()
+function! prompt#cursor_end()
     let s:pos = len(s:input)
-    cal {s:pre}render()
+    cal prompt#render()
 endfunction
 
-function! {s:pre}cursor_left()
+function! prompt#cursor_left()
     if s:pos > 0
         let s:pos -= 1
-        cal {s:pre}render()
+        cal prompt#render()
     endif
 endfunction
 
-function! {s:pre}cursor_right()
+function! prompt#cursor_right()
     if s:pos < len(s:input)
         let s:pos += 1
-        cal {s:pre}render()
+        cal prompt#render()
     endif
 endfunction
 
-function! {s:pre}cursor_start()
+function! prompt#cursor_start()
     let s:pos = 0
-    cal {s:pre}render()
+    cal prompt#render()
 endfunction
 
-function! {s:pre}delete()
+function! prompt#delete()
     if s:pos < len(s:input)
         let s:input = s:input[: s:pos-1] . s:input[s:pos+1 :]
-        cal {s:pre}render()
+        cal prompt#render()
         cal s:change_hook()
     endif
 endfunction
