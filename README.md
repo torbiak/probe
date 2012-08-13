@@ -1,5 +1,7 @@
 TODO: Write a real README
 
+--probe----o
+
 Introduction
 ============
 probe is a pure-Vimscript fuzzy finder, in the spirit of the command-t and

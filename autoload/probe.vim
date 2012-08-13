@@ -2,9 +2,7 @@
 let s:max_height = 10
 let s:height = 0
 let s:location = 'botright'
-let s:bufname = '--probe--'
-let s:selection_marker = '> '
-let s:marker_length = len(s:selection_marker)
+let s:bufname = '--probe----o'
 let s:bufnr = -1
 let s:winnr = -1
 let s:no_matches_message = '--NO MATCHES--'
@@ -20,26 +18,12 @@ let s:candidates = []
 let s:prompt_input = ''
 let s:prev_prompt_input = ''
 let s:ignore_case = '\c'
+let s:scoring_threshold = 400
 
 " Character-wise caching
 let s:match_cache = {}
 let s:match_cache_order = []
-let s:max_match_cache_size = 3
-
-" Variables for saving global options.
-let s:timeoutlen = 0
-let s:report = 0
-let s:sidescroll = 0
-let s:sidescrolloff = 0
-let s:timeout = 0
-let s:equalalways = 0
-let s:hlsearch = 0
-let s:insertmode = 0
-let s:showcmd = 0
-
-let s:last_pattern = ''
-let s:winrestcmd = '' " For saving window sizes.
-let s:saved_window_num = 0 " Previously active window.
+let s:max_match_cache_size = 10
 
 " Finder functions (for finding files, buffers, etc.)
 function! probe#noop()
@@ -57,8 +41,8 @@ function! probe#open(scan, open, refresh)
     let g:Probe_refresh = a:refresh
 
     cal s:save_vim_state()
-    cal s:set_options()
     cal s:create_buffer()
+    cal s:set_options()
 
     cal prompt#open({
         \ 'accept': function('probe#accept_nosplit'),
@@ -68,9 +52,11 @@ function! probe#open(scan, open, refresh)
 
     cal s:create_cleanup_autocommands()
     cal s:map_keys()
-    let s:candidates = g:Probe_scan()
-    cal s:reset_matches()
     cal s:setup_highlighting()
+
+    let s:prev_prompt_input = ''
+    let s:candidates = g:Probe_scan()
+    cal s:update_matches()
 endfunction
 
 function! s:save_vim_state()
@@ -90,6 +76,7 @@ function! s:set_options()
     set sidescroll=0     " don't sidescroll in jumps
     set sidescrolloff=0  " don't sidescroll automatically
     set noequalalways    " don't auto-balance window sizes
+    set cursorline
 endfunction
 
 function! s:create_buffer()
@@ -161,6 +148,7 @@ function! s:save_options()
     let s:insertmode = &insertmode
     let s:showcmd = &showcmd
     let s:updatetime = &updatetime
+    let s:cursorline = &cursorline
 endfunction
 
 function! s:restore_options()
@@ -174,6 +162,7 @@ function! s:restore_options()
     let &insertmode = s:insertmode
     let &showcmd = s:showcmd
     let &updatetime = s:updatetime
+    let &cursorline = s:cursorline
 endfunction
 
 function! probe#restore_vim_state()
@@ -278,15 +267,14 @@ endfunction
 
 function! s:filter()
     if s:num_matches() > 0 && len(s:prompt_input) > 0
-        exe printf('silent! g!#%s#d', s:pattern(s:prompt_input))
+        exe printf('silent! g!#%s#d', escape(s:pattern(s:prompt_input), '#'))
     endif
 endfunction
 
 function! s:update_matches()
     if has_key(s:match_cache, s:prompt_input)
         silent! %delete
-        cal append('$', s:match_cache[s:prompt_input])
-        delete
+        cal setline(1, s:match_cache[s:prompt_input])
     elseif s:is_search_narrower()
         cal s:filter()
     else
@@ -296,11 +284,10 @@ function! s:update_matches()
     cal s:cache_matches()
 
     " Scoring is expensive, so only do it after the search has been narrowed.
-    if s:num_matches() < 400
+    if s:num_matches() < s:scoring_threshold
         let sorted = s:sort_matches_by_score(getbufline(s:bufnr, 0, '$'))
         silent! %delete
-        cal append('$', sorted)
-        delete
+        cal setline(1, sorted)
     endif
 
     if s:num_matches() == 0
@@ -330,15 +317,14 @@ function! s:selected_match()
 endfunction
 
 function! s:reset_matches()
-    resize 10
+    exe printf('resize %d', min([len(s:candidates), s:max_height]))
     silent! %delete
-    cal append('$', s:candidates)
-    delete
+    cal setline(1, s:candidates)
 endfunction
 
 function! s:is_search_narrower()
     let pattern = s:pattern(s:prompt_input)
-    let is_longer = len(s:prompt_input) >= len(s:prev_prompt_input)
+    let is_longer = len(s:prompt_input) > len(s:prev_prompt_input)
     let appended_to_end = stridx(s:prompt_input, s:prev_prompt_input) == 0
     return is_longer && appended_to_end
 endfunction
@@ -411,7 +397,7 @@ function! s:update_statusline()
     "let percent_searched = float2nr((100.0 * s:index) / len(s:candidates))
     "exe printf('setlocal stl=--probe--%%=%d\ matches\ out\ of\ %d\ (%d%%%%\ searched)',
     "    \ len(s:matches), len(s:candidates), percent_searched)
-    exe printf('setlocal stl=--probe--%%=%d', line('$'))
+    exe 'setlocal stl=--probe----o%=%L\ matches'
 endfunction
 
 function! s:highlight_matches()
