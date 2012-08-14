@@ -76,7 +76,6 @@ function! s:set_options()
     set sidescroll=0     " don't sidescroll in jumps
     set sidescrolloff=0  " don't sidescroll automatically
     set noequalalways    " don't auto-balance window sizes
-    set cursorline
 endfunction
 
 function! s:create_buffer()
@@ -125,7 +124,7 @@ function! s:set_local_options()
     setlocal nolist           " don't use List mode (visible tabs etc)
     setlocal foldcolumn=0     " don't show a fold column at side
     setlocal foldlevel=99     " don't fold anything
-    setlocal nocursorline     " don't highlight line cursor is on
+    setlocal cursorline       " highlight line cursor is on
     setlocal nospell          " spell-checking off
     setlocal nobuflisted      " don't show up in the buffer list
     setlocal textwidth=0      " don't hard-wrap (break long lines)
@@ -148,7 +147,6 @@ function! s:save_options()
     let s:insertmode = &insertmode
     let s:showcmd = &showcmd
     let s:updatetime = &updatetime
-    let s:cursorline = &cursorline
 endfunction
 
 function! s:restore_options()
@@ -162,7 +160,6 @@ function! s:restore_options()
     let &insertmode = s:insertmode
     let &showcmd = s:showcmd
     let &updatetime = s:updatetime
-    let &cursorline = s:cursorline
 endfunction
 
 function! probe#restore_vim_state()
