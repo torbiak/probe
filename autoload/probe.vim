@@ -17,7 +17,6 @@ let s:candidates = []
 let s:prompt_input = ''
 let s:prev_prompt_input = ''
 let s:ignore_case = '\c'
-let s:scoring_threshold = 400
 
 " Character-wise caching
 let s:match_cache = {}
@@ -308,7 +307,7 @@ function! s:update_matches()
     cal s:cache_matches()
 
     " Scoring is expensive, so only do it after the search has been narrowed.
-    if s:num_matches() < s:scoring_threshold
+    if s:num_matches() < g:probe_scoring_threshold
         let sorted = s:sort_matches_by_score(getbufline(s:bufnr, 0, '$'))
         silent! %delete
         cal setline(1, sorted)

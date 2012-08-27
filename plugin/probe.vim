@@ -29,6 +29,10 @@ if !exists('g:probe_window_location')
     let g:probe_window_location = 'botright'
 endif
 
+if !exists('g:probe_scoring_threshold')
+    let g:probe_scoring_threshold = 400
+endif
+
 if !exists('g:probe_mappings')
     let g:probe_mappings = {}
 endif

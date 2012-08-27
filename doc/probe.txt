@@ -5,12 +5,12 @@ CONTENTS                                                      *probe-contents*
  1. Introduction            |probe-intro|
  2. Installation            |probe-installation|
  3. Usage                   |probe-usage|
- 5. Command Mappings        |probe-command-mappings|
- 6. Prompt Mappings         |probe-prompt-mappings|
- 7. Commands                |probe-commands|
- 8. Acknowledgements        |probe-acknowledgements|
- 9. License                 |probe-license|
-10. Changelog               |probe-changelog|
+ 4. Command Mappings        |probe-command-mappings|
+ 5. Prompt Mappings         |probe-prompt-mappings|
+ 6. Commands                |probe-commands|
+ 7. Acknowledgements        |probe-acknowledgements|
+ 8. License                 |probe-license|
+ 9. Changelog               |probe-changelog|
 
 
 INTRODUCTION                                                     *probe-intro*
@@ -140,6 +140,16 @@ OPTIONS                                                        *probe-options*
     like the most sensible options.
     Default: (string) "botright"
 
+|g:probe_scoring_threshold|                        *g:probe_scoring_threshold*
+    Number of matches the search must be narrowed down to before the ranking
+    algorithm will be applied.
+    Default: (number) 400
+    
+    This can be increased to give better results with shorter queries, but
+    character-wise scoring is slow in VimL and responsiveness may suffer. If
+    probe is stuttering while the last few characters of queries are being
+    entered, try decreasing the threshold.
+
 |g:probe_mappings|                                          *g:probe_mappings*
     Dict used to customize mappings. If a mapping is given for some operation
     the default mapping will not be created.
@@ -216,7 +226,7 @@ without resorting to C.
 Greetz fly out to Oscar for his help during design and testing.
 
 
-LICENSE  *probe-license*
+LICENSE                                                        *probe-license*
 
 Copyright (c) 2012 Jordan Torbiak
 
