@@ -1,10 +1,7 @@
 " File caching
 let s:file_caches = {}
 let s:file_cache_order = []
-let s:max_file_cache_size = 90000
 let s:max_file_caches = 1
-let s:file_cache_dir = expand('$HOME/.probe_cache')
-
 
 function! probe#file#scan()
     let dir = getcwd()
@@ -13,7 +10,7 @@ function! probe#file#scan()
         return s:file_caches[dir]
     endif
     let cache_filepath = s:cache_filepath(dir)
-    if g:probe_persist_cache && filereadable(cache_filepath)
+    if g:probe_cache_dir != '' && filereadable(cache_filepath)
         let s:file_caches[dir] = readfile(cache_filepath)
         return s:file_caches[dir]
     endif
@@ -33,7 +30,7 @@ function! probe#file#scan()
     " recursively scan for files
     let s:file_caches[dir] = s:scan_files(dir, [], 0, {})
 
-    if g:probe_persist_cache
+    if g:probe_cache_dir
         cal s:save_cache(dir, s:file_caches[dir])
     endif
 
@@ -72,7 +69,7 @@ function! s:scan_files(dir, files, current_depth, scanned_dirs)
     redraw
     echo "Scanning " . a:dir
     for name in split(globpath(a:dir, '*', 1), '\n')
-        if len(a:files) >= s:max_file_cache_size
+        if len(a:files) >= g:probe_max_file_cache_size
             break
         endif
         if s:match_some(name, g:probe_ignore_files)
@@ -98,12 +95,12 @@ function! s:match_some(str, patterns)
 endfunction
 
 function! s:save_cache(dir, files)
-    if !isdirectory(s:file_cache_dir)
-        cal mkdir(s:file_cache_dir)
+    if !isdirectory(g:probe_cache_dir)
+        cal mkdir(g:probe_cache_dir)
     endif
     cal writefile(a:files, s:cache_filepath(a:dir))
 endfunction
 
 function! s:cache_filepath(dir)
-    return printf('%s/%x', s:file_cache_dir, probe#util#rshash(a:dir))
+    return printf('%s/%x', g:probe_cache_dir, probe#util#rshash(a:dir))
 endfunction

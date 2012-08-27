@@ -1,9 +1,25 @@
-" public function prefix. Depends on prompt.vim location under autoload/.
 let s:hooks = {}
 let s:input = ''
 let s:pos = 0
 
-function! s:map_keys()
+let s:default_key_bindings = {
+    \ 'accept'          : ['<CR>'],
+    \ 'backspace'       : ['<BS>'],
+    \ 'backspace_word'  : ['<C-w>'],
+    \ 'cancel'          : ['<C-c>', '<Esc>'],
+    \ 'delete_to_start' : ['<C-u>'],
+    \ 'delete_to_end'   : ['<C-k>'],
+    \ 'cursor_end'      : ['<C-e>'],
+    \ 'cursor_left'     : ['<Left>', '<C-b>'],
+    \ 'cursor_right'    : ['<Right>', '<C-f>'],
+    \ 'cursor_start'    : ['<C-a>'],
+    \ 'delete'          : ['<Del>', '<C-d>'],
+\}
+
+function! s:map_keys(key_bindings)
+" a:key_bindings override the defaults for "special" operations, like cursor
+" control.
+
     " Basic keys that aren't customizable.
     let lowercase = 'abcdefghijklmnopqrstuvwxyz'
     let uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -19,20 +35,16 @@ function! s:map_keys()
     " All these commands can be overridden by including respective entries in the hooks dict.
     " Also, there are the following hooks:
     " - change: called whenever the input string changes
-    let special = {
-        \ 'accept'          : ['<CR>'],
-        \ 'backspace'       : ['<BS>'],
-        \ 'backspace_word'  : ['<C-w>'],
-        \ 'cancel'          : ['<C-c>', '<Esc>'],
-        \ 'delete_to_start' : ['<C-u>'],
-        \ 'delete_to_end'   : ['<C-k>'],
-        \ 'cursor_end'      : ['<C-e>'],
-        \ 'cursor_left'     : ['<Left>', '<C-b>'],
-        \ 'cursor_right'    : ['<Right>', '<C-f>'],
-        \ 'cursor_start'    : ['<C-a>'],
-        \ 'delete'          : ['<Del>', '<C-d>'],
-    \ }
-    for [hook_name, keys] in items(special)
+    for [hook_name, keys] in items(s:default_key_bindings)
+        if has_key(a:key_bindings, hook_name)
+            unlet keys
+            let keys = a:key_bindings[hook_name]
+        endif
+        if type(keys) != type([])
+            let temp = keys
+            unlet keys
+            let keys = [temp]
+        endif
         for key in keys
             if key ==? '<Esc>' && &term =~ '\v(screen|xterm|vt100)'
                 continue
@@ -86,13 +98,20 @@ function! prompt#handle_event(hook)
     endif
 endfunction
 
-function! prompt#open(hooks)
+function! prompt#open(hooks, key_bindings)
+    " Operations can be overridden by giving functions via a:hooks.
+    " Key bindings to operations can be overridden via a:key_bindings.
+    "
     " a:hooks - dict of funcrefs. eg.
     "   {'accept': function('myAccept'), 'change': function('myChange')}
-    "   accept - <enter>
-    "   change - a character is added or remove from the prompt's input
+    "   accept - called when <enter> is pressed
+    "   change - called when the prompt's input changes
+    "
+    " a:key_bindings - dict of key mappings to override defaults. eg.
+    "   {'cancel': <c-q>}
+    " See the 'special' dict in s:map_keys for available operations.
     let s:hooks = a:hooks
-    cal s:map_keys()
+    cal s:map_keys(a:key_bindings)
     let s:input = ''
     let s:pos = 0
     cal prompt#render()

@@ -1,7 +1,6 @@
 " Match window
-let s:max_height = 10
+let g:probe_max_height = 10
 let s:height = 0
-let s:location = 'botright'
 let s:bufname = '--probe----o'
 let s:bufnr = -1
 let s:winnr = -1
@@ -24,6 +23,15 @@ let s:scoring_threshold = 400
 let s:match_cache = {}
 let s:match_cache_order = []
 let s:max_match_cache_size = 10
+
+" Key bindings
+let s:default_key_bindings = {
+    \ 'select_next': '<c-n>',
+    \ 'select_prev': '<c-p>',
+    \ 'accept_split': '<c-s>',
+    \ 'accept_vsplit': '<c-v>',
+    \ 'refresh_cache': ['<f5>', '<c-r>'],
+\ }
 
 " Finder functions (for finding files, buffers, etc.)
 function! probe#noop()
@@ -48,7 +56,7 @@ function! probe#open(scan, open, refresh)
         \ 'accept': function('probe#accept_nosplit'),
         \ 'cancel': function('probe#close'),
         \ 'change': function('probe#on_prompt_change'),
-    \ })
+    \ }, g:probe_mappings)
 
     cal s:create_cleanup_autocommands()
     cal s:map_keys()
@@ -80,12 +88,12 @@ endfunction
 
 function! s:create_buffer()
     if s:bufnr == -1
-        exe printf('silent! %s 1split %s', s:location, s:bufname)
+        exe printf('silent! %s 1split %s', g:probe_window_location, s:bufname)
         let s:bufnr = bufnr('%')
         let s:winnr = winnr()
         cal s:set_local_options()
     else " still have the buffer from last time
-        exe printf('silent! %s sbuffer %d', s:location, s:bufnr)
+        exe printf('silent! %s sbuffer %d', g:probe_window_location, s:bufnr)
         resize 1
     endif
 endfunction
@@ -99,13 +107,22 @@ function! s:create_cleanup_autocommands()
 endfunction
 
 function! s:map_keys()
-    cal prompt#map_key('<c-n>', 'probe#select_next')
-    cal prompt#map_key('<c-p>', 'probe#select_prev')
-    cal prompt#map_key('<c-s>', 'probe#accept', 'split')
-    cal prompt#map_key('<c-v>', 'probe#accept', 'vsplit')
-    cal prompt#map_key('<F5>',  'probe#refresh_cache')
-    unmap <buffer> ;
-    cal prompt#map_key(';',  'probe#score_all_matches')
+    unlet! keys
+    for [operation, keys] in items(s:default_key_bindings)
+        if has_key(g:probe_mappings, operation)
+            unlet keys
+            let keys = g:probe_mappings[operation]
+        endif
+        if type(keys) != type([])
+            let temp = keys
+            unlet keys
+            let keys = [temp]
+        endif
+        for key in keys
+            cal prompt#map_key(key, 'probe#' . operation)
+        endfor
+        unlet! keys
+    endfor
 endfunction
 
 function! s:setup_highlighting()
@@ -211,9 +228,18 @@ function! probe#close()
     echo
 endfunction
 
-" Need a function without arguments to give to prompt.
+
+" Need functions without arguments to make key mapping easier.
 function! probe#accept_nosplit()
     cal probe#accept('')
+endfunction
+
+function! probe#accept_split()
+    cal probe#accept('split')
+endfunction
+
+function! probe#accept_vsplit()
+    cal probe#accept('vsplit')
 endfunction
 
 function! probe#accept(split)
@@ -232,6 +258,7 @@ function! probe#accept(split)
         cal g:Probe_open(selection)
     endif
 endfunction
+
 
 function! s:select_appropriate_window()
 " select the first normal-ish window.
@@ -291,7 +318,7 @@ function! s:update_matches()
         cal setline(1, s:no_matches_message)
     endif
 
-    exe printf('resize %d', min([s:num_matches(), s:max_height]))
+    exe printf('resize %d', min([s:num_matches(), g:probe_max_height]))
     cal s:update_statusline()
     cal s:highlight_matches()
     $
@@ -314,7 +341,7 @@ function! s:selected_match()
 endfunction
 
 function! s:reset_matches()
-    exe printf('resize %d', min([len(s:candidates), s:max_height]))
+    exe printf('resize %d', min([len(s:candidates), g:probe_max_height]))
     silent! %delete
     cal setline(1, s:candidates)
 endfunction

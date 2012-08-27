@@ -1,0 +1,209 @@
+*probe.txt*                     For Vim version 7.3                    *probe*
+
+CONTENTS                                                      *probe-contents*
+
+ 1. Introduction            |probe-intro|
+ 2. Installation            |probe-installation|
+ 3. Usage                   |probe-usage|
+ 5. Command Mappings        |probe-command-mappings|
+ 6. Prompt Mappings         |probe-prompt-mappings|
+ 7. Commands                |probe-commands|
+
+
+INTRODUCTION                                                           *probe*
+
+A pure-VimL fuzzy finder inspired by kien's ctrlp.vim and wincent's Command-T.
+
+
+INSTALLATION                                              *probe-installation*
+
+1. Install Tim Pope's pathogen plugin (https://github.com/tpope/vim-pathogen).
+2. Clone or download to $HOME/.vim/bundle:
+
+    $ git clone https://github.com/torbiak/probe.git ~/.vim/bundle/probe
+
+USAGE                                                            *probe-usage*
+
+probe caches the filepaths under Vim's current working directory and offers an
+incremental search of that cache. When the number of matching filepaths is
+small enough they are ordered by a simple ranking algorithm that favours
+characters matching immediately after a path separator or another matched
+character, or at the beginning or end of a filepath. Because of this ranking
+algorithm the best approach to finding files using probe is to enter the first
+few characters of some path components as you work your way towards your
+target.
+
+Subsequence search mode:
+
+If the query doesn't contain any spaces, probe finds filepaths containing the
+query as a subsequence. Thus, "ulmwhat" is a reasonable query to search for
+/usr/local/man/whatis.
+
+Substring search mode:
+
+If the query contains spaces, filepaths containing each space-delimited
+substring are matched. Thus, 'loc man what' is also a very specific query for
+/usr/local/man/whatis.
+
+Subsequence mode typically results in good results in fewer keystrokes, but
+when searching for a filepath containing common characters the extra
+specificity of substring mode can be useful.
+
+COMMAND MAPPINGS                                      *probe-command-mappings*
+
+If no mappings to the probe file and buffer finder commands aren't already
+defined, the following will be:
+
+    <Leader>f  open the file finder
+    <Leader>b  open the buffer finder
+
+Adding a command like the following to vimrc can customize one of these
+mappings: >
+
+    nnoremap <silent> <Leader>f :Probe<CR>
+<
+
+
+PROMPT MAPPINGS                                        *probe-prompt-mappings*
+
+Previous match                 <C-p>
+Next match                     <C-n>
+
+Open selected match            <Enter>
+Open in split                  <C-s>
+Open in vsplit                 <C-v>
+Cancel                         <C-c> or <Esc>, if available
+Refresh cache                  <C-r> or <F5>
+
+Beginning of line              <C-a>
+End of line                    <C-e>
+Delete to end of line          <C-k>
+Delete to beginning of line    <C-u>
+Delete previous word           <C-w>
+Cursor right                   <C-f> or <Right>
+Cursor left                    <C-b> or <Left>
+Delete                         <Del> or <C-d>
+
+NOTE: If c-s doesn't work your terminal might be eating it for flow control
+purposes. Consider disabling flow control (eg. stty -ixoff -ixon).
+
+See |g:probe_mappings| to customizing these mappings.
+
+COMMANDS                                                      *probe-commands*
+
+|:ProbeFile|                                                          *:Probe*
+    Alias for |:ProbeFile|
+
+|:ProbeFile|                                                      *:ProbeFile*
+    Open the file finder, starting in the current working directory.
+
+|:ProbeBuffer|                                                  *:ProbeBuffer*
+    Open the buffer finder.
+
+|:ProbeRefresh|                                                *:ProbeRefresh*
+    Refresh the cache for the current directory and reread configuration
+    variables.
+
+OPTIONS                                                        *probe-options*
+
+|g:probe_ignore_files|                                  *g:probe_ignore_files*
+    List of vim regexes. Files matching any of them are ignored when scanning
+    directory trees and thus are never searched.
+    
+    Default: (list) []
+
+|g:probe_cache_dir|                                        *g:probe_cache_dir*
+    Directory to store cached filepath lists in. If set to the empty string
+    caches aren't saved to the filesystem.
+
+    Default: (string) $HOME/.probe_cache
+
+|g:probe_max_file_cache_size|                    *g:probe_max_file_cache_size*
+    Maximum number of files to scan.
+
+    Default: (number) 100000
+
+|g:probe_max_height|                                      *g:probe_max_height*
+    Maximum height of the match window.
+
+    Default: (number) 10
+
+|g:probe_reverse_sort|                                  *g:probe_reverse_sort*
+    Reverse the sorting of scored matches, causing the best match to be at the
+    top of the window.
+
+    Default: (boolean) 0
+
+|g:probe_window_location|                            *g:probe_window_location*
+    Location of the match window. Possible values are |leftabove|,
+    |rightbelow|, |topleft|, and |botright|, but |topleft| and |botright| seem
+    like the most sensible options.
+
+    Default: (string) "botright"
+
+|g:probe_mappings|                                          *g:probe_mappings*
+    Dict used to customize mappings. If a mapping is given for some operation
+    the default mapping will not be created.
+
+    For example, to map select_next/select_prev to <c-j>/<c-k>, put the
+    following in vimrc: >
+
+    let g:probe_mappings = {'select_next': '<c-j>'}
+<
+
+    To map multiple keys to an operation specify a list: >
+
+    let g:probe_mappings = {'select_next': ['<c-j>', '<c-n>']}
+<
+
+    Available operations:
+
+    select_next                                                 default: <c-n>
+        select next match in the match window
+
+    select_prev                                                 default: <c-p>
+        select previous match in the match window
+
+    accept                                                    default: <enter>
+        open the selected match in the current window
+
+    accept_split                                                default: <c-s>
+        open the selected match in a horizontally split window
+
+    accept_vsplit                                               default: <c-v>
+        open the selected match in a vertically split window
+
+    refresh_cache                                         default: <c-r>, <f5>
+        delete the cache in use, if any, and rescan for candidates
+
+    cancel                              default: <c-c>, <esc> (when available)
+        close probe
+
+    backspace                                                    default: <bs>
+        delete the previous characater
+
+    backspace_word                                              default: <c-w>
+        delete the previous word
+
+    delete                                                      default: <c-d>
+        delete the character under the cursor
+        
+    delete_to_start                                             default: <c-u>
+        delete all characters between the cursor and the start of the line
+
+    delete_to_end                                               default: <c-k>
+        delete all characters between the cursor the end of the line
+
+    cursor_start                                                default: <c-a>
+        move the cursor to the start of the line
+
+    cursor_end                                                  default: <c-e>
+        move the cursor to the end of the line
+
+    cursor_left                                                 default: <c-b>
+        move the cursor back one character
+
+    cursor_right                                                default: <c-f>
+        move the cursor forward one character
+
+vim:tw=78:ts=8:ft=help:norl:
