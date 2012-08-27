@@ -39,15 +39,15 @@ target.
 
 Subsequence search mode:
 
-If the query doesn't contain any spaces, probe finds filepaths containing the
-query as a subsequence. Thus, "ulmwhat" is a reasonable query to search for
-/usr/local/man/whatis.
+    If the query doesn't contain any spaces, probe finds filepaths containing
+    the query as a subsequence. Thus, "ulmwhat" is a reasonable query to
+    search for /usr/local/man/whatis.
 
 Substring search mode:
 
-If the query contains spaces, filepaths containing each space-delimited
-substring are matched. Thus, 'loc man what' is also a very specific query for
-/usr/local/man/whatis.
+    If the query contains spaces, filepaths containing each space-delimited
+    substring are matched. Thus, 'loc man what' is also a very specific query
+    for /usr/local/man/whatis.
 
 Subsequence mode typically results in good results in fewer keystrokes, but
 when searching for a filepath containing common characters the extra
@@ -96,13 +96,13 @@ See |g:probe_mappings| for information on customizing these mappings.
 
 COMMANDS                                                      *probe-commands*
 
-|:ProbeFile|                                                          *:Probe*
-    Alias for |:ProbeFile|
+|:Probe|                                                              *:Probe*
+    Alias for |:ProbeFindFile|
 
-|:ProbeFile|                                                      *:ProbeFile*
+|:ProbeFindFile|                                                  *:ProbeFile*
     Open the file finder, starting in the current working directory.
 
-|:ProbeBuffer|                                                  *:ProbeBuffer*
+|:ProbeFindBuffer|                                              *:ProbeBuffer*
     Open the buffer finder.
 
 |:ProbeRefresh|                                                *:ProbeRefresh*

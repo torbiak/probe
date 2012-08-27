@@ -58,6 +58,6 @@ if !hasmapto(':Probe<CR>')
   silent! nnoremap <unique> <silent> <Leader>f :Probe<CR>
 endif
 
-if !hasmapto(':ProbeBuffer<CR>')
-  silent! nnoremap <unique> <silent> <Leader>b :ProbeBuffer<CR>
+if !hasmapto(':ProbeFindBuffer<CR>')
+  silent! nnoremap <unique> <silent> <Leader>b :ProbeFindBuffer<CR>
 endif
