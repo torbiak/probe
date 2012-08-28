@@ -6,13 +6,10 @@ let s:bufnr = -1
 let s:winnr = -1
 let s:no_matches_message = '--NO MATCHES--'
 
-" Matching
-" probe does an incremental search, but only scans the candidates once. It
-" does this by only finding as many matches as it needs to fill the match
-" window, keeping track of the matches and position in the candidates list as
-" the prompt input narrows the search.
-" Invariant: s:matches must always hold any matches for s:prompt_input in
-" s:candidates[: s:index - 1].
+" Debugging and tweaking info
+let s:show_scores = 0
+let s:show_time_spent = 0
+
 let s:candidates = []
 let s:prompt_input = ''
 let s:prev_prompt_input = ''
@@ -63,6 +60,7 @@ function! probe#open(scan, open, refresh)
 
     let s:prev_prompt_input = ''
     let s:candidates = g:Probe_scan()
+    let s:time_spent = 0.0 " for benchmarking
     cal s:update_matches()
 endfunction
 
@@ -295,6 +293,7 @@ function! s:filter()
 endfunction
 
 function! s:update_matches()
+    let start_time = reltime()
     if has_key(s:match_cache, s:prompt_input)
         silent! %delete
         cal setline(1, s:match_cache[s:prompt_input])
@@ -304,14 +303,16 @@ function! s:update_matches()
         cal s:reset_matches()
         cal s:filter()
     endif
-    cal s:cache_matches()
 
     " Scoring is expensive, so only do it after the search has been narrowed.
     if s:num_matches() < g:probe_scoring_threshold
-        let sorted = s:sort_matches_by_score(getbufline(s:bufnr, 0, '$'))
-        silent! %delete
-        cal setline(1, sorted)
+        "let sorted = s:sort_matches_by_score(getbufline(s:bufnr, 0, '$'))
+        "silent! %delete
+        "cal setline(1, sorted)
+        cal s:sort_matches()
     endif
+
+    cal s:cache_matches()
 
     if s:num_matches() == 0
         cal setline(1, s:no_matches_message)
@@ -322,7 +323,43 @@ function! s:update_matches()
     cal s:highlight_matches()
     $
     normal! zb
+    let s:time_spent += str2float(reltimestr(reltime(start_time)))
 endfunction
+
+function! s:sort_matches()
+    cal s:prepend_scores()
+    if g:probe_reverse_sort
+        sort! n
+    else
+        sort n
+    endif
+
+    if !s:show_scores
+        cal s:remove_scores()
+    endif
+endfunction
+
+function! s:scores_shown()
+    return s:show_scores && s:num_matches() < g:probe_scoring_threshold
+endfunction
+
+function! s:prepend_scores()
+    if s:scores_shown()
+        cal s:remove_scores()
+    endif
+    g#^#cal s:prepend_score()
+endfunction
+
+function! s:prepend_score()
+    let line = getline('.')
+    cal setline('.', printf('%2d %s', s:score_match(s:prompt_input, line), line))
+endfunction
+
+function! s:remove_scores()
+    " Note the trailing space.
+    g#^#normal! df 
+endfunction
+
 
 function! s:num_matches()
     if line('$') == 1 && getline(1) == ''
@@ -335,6 +372,10 @@ endfunction
 function! s:selected_match()
     if s:num_matches() == 0
         throw 'probe: no matches'
+    endif
+    let line = getline('.')
+    if s:scores_shown()
+        let line = line[stridx(line, ' ') + 1:]
     endif
     return getline('.')
 endfunction
@@ -352,7 +393,7 @@ function! s:is_search_narrower()
     return is_longer && appended_to_end
 endfunction
 
-function! probe#score_match(pattern, match)
+function! s:score_match(pattern, match)
 " Score a match based on how close pattern characters match to path separators,
 " other pattern characters, and the end of the match.
     let match = s:ignore_case == '\c' ? tolower(a:match) : a:matchk
@@ -379,31 +420,6 @@ function! probe#score_match(pattern, match)
     return score
 endfunction
         
-function! s:sort_matches_by_score(matches)
-    let rankings = []
-    for match in a:matches
-        let score = probe#score_match(s:prompt_input, match)
-        cal add(rankings, [score, match])
-    endfor
-    let sorted = []
-    let s:scores = []
-    for pair in sort(rankings, function('s:ranking_compare'))
-        cal add(sorted, pair[1])
-        cal add(s:scores, pair[0])
-    endfor
-    return sorted
-endfunction
-
-function! s:ranking_compare(a, b)
-" Sort [<score>, <match>] pairs by score, match length.
-    let score_delta = a:a[0] - a:b[0]
-    if score_delta != 0
-        return score_delta
-    endif
-    let length_delta = len(a:b[1]) - len(a:a[1])
-    return length_delta
-endfunction
-
 function! s:pattern(prompt_input)
     if stridx(s:prompt_input, ' ') == -1
         let pattern = ['\V\^', s:ignore_case]
@@ -420,7 +436,16 @@ function! s:update_statusline()
     "let percent_searched = float2nr((100.0 * s:index) / len(s:candidates))
     "exe printf('setlocal stl=--probe--%%=%d\ matches\ out\ of\ %d\ (%d%%%%\ searched)',
     "    \ len(s:matches), len(s:candidates), percent_searched)
-    exe 'setlocal stl=--probe----o%=%L\ matches'
+    let format = '--probe----o%='
+    if s:num_matches() > g:probe_scoring_threshold
+        let format .= '%#Special#%L%#StatusLine# matches'
+    else
+        let format .= '%L matches'
+    endif
+    if s:show_time_spent
+        let format .= printf(' in %.2fs', s:time_spent)
+    endif
+    exe printf('setlocal stl=%s', escape(format, ' '))
 endfunction
 
 function! s:highlight_matches()
