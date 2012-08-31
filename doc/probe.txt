@@ -150,6 +150,10 @@ OPTIONS                                                        *probe-options*
     probe is stuttering while the last few characters of queries are being
     entered, try decreasing the threshold.
 
+    The number of matches will be highlighted in the statusline until it is
+    below the scoring threshold, as a warning that the query needs to be more
+    specific.
+
 |g:probe_mappings|                                          *g:probe_mappings*
     Dict used to customize mappings. If a mapping is given for some operation
     the default mapping will not be created.
