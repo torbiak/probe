@@ -1,7 +1,7 @@
 " File caching
 let s:file_caches = {}
 let s:file_cache_order = []
-let s:max_file_caches = 1
+let s:max_file_caches = 10
 
 function! probe#file#scan()
     let dir = getcwd()

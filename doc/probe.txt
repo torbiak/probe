@@ -88,6 +88,8 @@ Cursor right             <C-f> or <Right>
 Cursor left              <C-b> or <Left>
 Delete                   <Del> or <C-d>
 
+Up a directory           <C-y>
+
 NOTE: If c-s doesn't work your terminal might be eating it for flow control
 purposes. Consider disabling flow control (eg. stty -ixoff -ixon).
 
@@ -219,6 +221,9 @@ OPTIONS                                                        *probe-options*
     cursor_right                                                default: <c-f>
         move the cursor forward one character
 
+    up_dir                                                      default: <c-y>
+        search in the parent directory (doesn't apply to all finders)
+
 ACKNOWLEDGEMENTS                                      *probe-acknowledgements*
 
 Mad props to wincent for Command-T. It's a great plugin and his code is
@@ -227,7 +232,7 @@ things.  Thanks to kien as well for his pure VimL fuzzy finder, ctrlp.vim,
 which gave me a bunch of ideas for how to make matching and scoring responsive
 without resorting to C.
 
-Greetz fly out to Oscar for his help during design and testing.
+Greetz fly out to Oscar and line6 for their help during design and testing.
 
 
 LICENSE                                                        *probe-license*

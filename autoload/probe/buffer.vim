@@ -1,4 +1,4 @@
-function! probe#buffer#scan()
+function! probe#buffer#scan(...)
     let buffers = []
     let max = bufnr('$')
     let i = 1

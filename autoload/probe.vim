@@ -18,6 +18,10 @@ let s:match_cache = {}
 let s:match_cache_order = []
 let s:max_match_cache_size = 10
 
+" Current directory for the file finder
+let s:dir = ''
+
+
 " Key bindings
 let s:default_key_bindings = {
     \ 'select_next': '<c-n>',
@@ -25,6 +29,7 @@ let s:default_key_bindings = {
     \ 'accept_split': '<c-s>',
     \ 'accept_vsplit': '<c-v>',
     \ 'refresh_cache': ['<f5>', '<c-r>'],
+    \ 'up_dir': '<c-y>',
 \ }
 
 " Finder functions (for finding files, buffers, etc.)
@@ -56,6 +61,7 @@ function! probe#open(scan, open, refresh)
     cal s:map_keys()
     cal s:setup_highlighting()
 
+    let s:dir = getcwd()
     let s:prev_prompt_input = ''
     let s:prompt_input = ''
     let s:candidates = g:Probe_scan()
@@ -68,6 +74,7 @@ function! s:save_vim_state()
     let s:last_pattern = @/
     let s:winrestcmd = winrestcmd() " TODO: Support older versions of vim.
     let s:saved_window_num = winnr()
+    let s:orig_working_dir = getcwd()
 endfunction
 
 function! s:set_options()
@@ -141,6 +148,7 @@ function! s:set_local_options()
     setlocal nospell          " spell-checking off
     setlocal nobuflisted      " don't show up in the buffer list
     setlocal textwidth=0      " don't hard-wrap (break long lines)
+    setlocal nomore           " don't pause when the command-line overflows
     if exists('+colorcolumn')
         setlocal colorcolumn=0
     endif
@@ -178,6 +186,7 @@ endfunction
 function! probe#restore_vim_state()
     cal s:restore_options()
     let @/ = s:last_pattern
+    exe printf('cd %s', s:orig_working_dir)
     exe s:winrestcmd
     exe s:saved_window_num . 'wincmd w'
 endfunction
@@ -438,7 +447,16 @@ function! s:ranking_compare(a, b)
 endfunction
 
 function! s:update_statusline()
-    let format = '--probe----o%='
+    let format = ''
+
+    if g:Probe_scan == function('probe#file#scan')
+        let format .= getcwd()
+    else
+        let format .= '--probe----o '
+    endif
+
+    let format .= '%='
+
     if s:num_matches() > g:probe_scoring_threshold
         let format .= '%#Special#%L%#StatusLine# matches'
     else
@@ -483,4 +501,10 @@ endfunction
 
 function! s:is_path_separator(char)
     return a:char =~ '[/\\]'
+endfunction
+
+function! probe#up_dir()
+    exe printf('cd %s', fnamemodify(getcwd(), ':h'))
+    let s:candidates = g:Probe_scan()
+    cal s:update_matches()
 endfunction
