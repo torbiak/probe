@@ -3,6 +3,26 @@ let s:file_caches = {}
 let s:file_cache_order = []
 let s:max_file_caches = 10
 
+function! probe#file#find()
+    cal probe#open(
+        \ function('probe#file#scan'),
+        \ function('probe#file#open'),
+        \ function('probe#file#refresh'))
+endfunction
+
+function! probe#file#find_in_repo()
+    let orig_dir = getcwd()
+    let repo_root = probe#file#find_repo_root()
+    if repo_root != ''
+        exe printf('cd %s', repo_root)
+    endif
+    cal probe#open(
+        \ function('probe#file#scan'),
+        \ function('probe#file#open'),
+        \ function('probe#file#refresh'))
+    cal probe#set_orig_working_dir(orig_dir)
+endfunction
+
 function! probe#file#scan()
     let dir = getcwd()
     " use cache if possible
@@ -68,7 +88,7 @@ function! s:scan_files(dir, files, current_depth, scanned_dirs)
     " scan dir recursively
     redraw
     echo "Scanning " . a:dir
-    for name in split(globpath(a:dir, '*', 1), '\n')
+    for name in split(globpath(a:dir, '*', !g:probe_use_wildignore), '\n')
         if len(a:files) >= g:probe_max_file_cache_size
             break
         endif
@@ -103,4 +123,22 @@ endfunction
 
 function! s:cache_filepath(dir)
     return printf('%s/%x', g:probe_cache_dir, probe#util#rshash(a:dir))
+endfunction
+
+function! probe#file#find_repo_root()
+    let meta_dir_pattern = '\v/\.(git|hg|svn|bzr)\n'
+    let orig_dir = getcwd()
+    let dir = orig_dir
+    while 1
+        if globpath(dir, '.*', 1) =~ meta_dir_pattern
+            return dir
+        endif
+        let parent = fnamemodify(dir, ':h')
+        if parent ==# dir
+            exe printf('cd %s', orig_dir)
+            break
+        endif
+        let dir = parent
+    endwhile
+    return ''
 endfunction

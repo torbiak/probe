@@ -33,25 +33,18 @@ if !exists('g:probe_scoring_threshold')
     let g:probe_scoring_threshold = 400
 endif
 
+if !exists('g:probe_use_wildignore')
+    let g:probe_use_wildignore = 0
+endif
+
 if !exists('g:probe_mappings')
     let g:probe_mappings = {}
 endif
 
-command! Probe :cal probe#open(
-    \ function('probe#file#scan'), 
-    \ function('probe#file#open'),
-    \ function('probe#file#refresh'))
-
-command! ProbeFindFile :cal probe#open(
-    \ function('probe#file#scan'), 
-    \ function('probe#file#open'),
-    \ function('probe#file#refresh'))
-
-command! ProbeFindBuffer :cal probe#open(
-    \ function('probe#buffer#scan'), 
-    \ function('probe#buffer#open'),
-    \ function('probe#buffer#refresh'))
-
+command! Probe :cal probe#file#find_in_repo()
+command! ProbeFindFile :cal probe#file#find()
+command! ProbeFindInRepo :cal probe#file#find_in_repo()
+command! ProbeFindBuffer :cal probe#buffer#find()
 command! ProbeRefresh :cal probe#refresh_cache()
 
 if !hasmapto(':Probe<CR>')

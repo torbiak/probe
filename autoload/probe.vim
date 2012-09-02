@@ -18,10 +18,6 @@ let s:match_cache = {}
 let s:match_cache_order = []
 let s:max_match_cache_size = 10
 
-" Current directory for the file finder
-let s:dir = ''
-
-
 " Key bindings
 let s:default_key_bindings = {
     \ 'select_next': '<c-n>',
@@ -61,7 +57,6 @@ function! probe#open(scan, open, refresh)
     cal s:map_keys()
     cal s:setup_highlighting()
 
-    let s:dir = getcwd()
     let s:prev_prompt_input = ''
     let s:prompt_input = ''
     let s:candidates = g:Probe_scan()
@@ -74,7 +69,13 @@ function! s:save_vim_state()
     let s:last_pattern = @/
     let s:winrestcmd = winrestcmd() " TODO: Support older versions of vim.
     let s:saved_window_num = winnr()
-    let s:orig_working_dir = getcwd()
+    " Only used if set_orig_working_dir is called after probe#open.
+    " Ugly, but it's only used by probe#file#find_in_repo.
+    let s:orig_working_dir = ''
+endfunction
+
+function! probe#set_orig_working_dir(dir)
+    let s:orig_working_dir = a:dir
 endfunction
 
 function! s:set_options()
@@ -186,7 +187,9 @@ endfunction
 function! probe#restore_vim_state()
     cal s:restore_options()
     let @/ = s:last_pattern
-    exe printf('cd %s', s:orig_working_dir)
+    if s:orig_working_dir
+        exe printf('cd %s', s:orig_working_dir)
+    endif
     exe s:winrestcmd
     exe s:saved_window_num . 'wincmd w'
 endfunction

@@ -99,12 +99,17 @@ See |g:probe_mappings| for information on customizing these mappings.
 COMMANDS                                                      *probe-commands*
 
 |:Probe|                                                              *:Probe*
-    Alias for |:ProbeFindFile|
+    Alias for |:ProbeFindFileInRepo|
 
-|:ProbeFindFile|                                                  *:ProbeFile*
+|:ProbeFindFile|                                              *:ProbeFindFile*
     Open the file finder, starting in the current working directory.
 
-|:ProbeFindBuffer|                                              *:ProbeBuffer*
+|:ProbeFindFileInRepo|                                  *:ProbeFindFileInRepo*
+    Open the file finder, starting in the first ancestor directory that
+    contains a VCS metadirectory, or the current working directory if no
+    metadirectories are found.
+
+|:ProbeFindBuffer|                                          *:ProbeFindBuffer*
     Open the buffer finder.
 
 |:ProbeRefresh|                                                *:ProbeRefresh*
@@ -155,6 +160,12 @@ OPTIONS                                                        *probe-options*
     The number of matches will be highlighted in the statusline until it is
     below the scoring threshold, as a warning that the query needs to be more
     specific.
+
+|g:probe_use_wildignore|                              *g:probe_use_wildignore*
+    Use 'wildignore' when scanning for files.
+    Default: (boolean) 0
+
+    g:probe_ignore_files still functions normally when this option is set.
 
 |g:probe_mappings|                                          *g:probe_mappings*
     Dict used to customize mappings. If a mapping is given for some operation

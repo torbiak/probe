@@ -1,4 +1,11 @@
-function! probe#buffer#scan(...)
+function! probe#buffer#find()
+    cal probe#open(
+        \ function('probe#buffer#scan'),
+        \ function('probe#buffer#open'),
+        \ function('probe#buffer#refresh'))
+endfunction
+
+function! probe#buffer#scan()
     let buffers = []
     let max = bufnr('$')
     let i = 1
