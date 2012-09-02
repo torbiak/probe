@@ -175,7 +175,7 @@ OPTIONS                                                        *probe-options*
     For example, to map select_next/select_prev to <c-j>/<c-k>, put the
     following in vimrc: >
 
-    let g:probe_mappings = {'select_next': '<c-j>'}
+    let g:probe_mappings = {'select_next': '<c-j>', 'select_prev': '<c-k>'}
 <
     To map multiple keys to an operation specify a list: >
 

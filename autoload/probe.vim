@@ -7,7 +7,7 @@ let s:winnr = -1
 let s:no_matches_message = '--NO MATCHES--'
 
 " Debugging and tweaking info
-let s:show_time_spent = 1
+let s:show_time_spent = 0
 
 let s:candidates = []
 let s:prompt_input = ''
@@ -69,8 +69,6 @@ function! s:save_vim_state()
     let s:last_pattern = @/
     let s:winrestcmd = winrestcmd() " TODO: Support older versions of vim.
     let s:saved_window_num = winnr()
-    " Only used if set_orig_working_dir is called after probe#open.
-    " Ugly, but it's only used by probe#file#find_in_repo.
     let s:orig_working_dir = ''
 endfunction
 
@@ -187,7 +185,7 @@ endfunction
 function! probe#restore_vim_state()
     cal s:restore_options()
     let @/ = s:last_pattern
-    if s:orig_working_dir
+    if s:orig_working_dir != ''
         exe printf('cd %s', s:orig_working_dir)
     endif
     exe s:winrestcmd
@@ -507,6 +505,9 @@ function! s:is_path_separator(char)
 endfunction
 
 function! probe#up_dir()
+    if s:orig_working_dir == ''
+        cal s:set_orig_working_dir(getcwd())
+    endif
     exe printf('cd %s', fnamemodify(getcwd(), ':h'))
     let s:candidates = g:Probe_scan()
     cal s:update_matches()
