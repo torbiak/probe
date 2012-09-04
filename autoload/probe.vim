@@ -249,10 +249,12 @@ function! probe#accept_vsplit()
 endfunction
 
 function! probe#accept(split)
-    " Need to get match information before closing the window.
+    " Get match information before closing the probe buffer.
     let selection = s:selected_match()
     let num_matches = s:num_matches()
+    let dir = getcwd()
     cal probe#close()
+
     if num_matches > 0
         cal s:select_appropriate_window()
         if a:split ==? 'split' || &modified
@@ -261,7 +263,7 @@ function! probe#accept(split)
         if a:split ==? 'vsplit'
             vsplit
         endif
-        cal g:Probe_open(selection)
+        cal g:Probe_open(dir . '/' . selection)
     endif
 endfunction
 
