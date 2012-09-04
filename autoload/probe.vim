@@ -90,7 +90,7 @@ endfunction
 
 function! s:create_buffer()
     if s:bufnr == -1
-        exe printf('silent! %s 1split %s', g:probe_window_location, s:bufname)
+        exe printf('silent! keepalt %s 1split %s', g:probe_window_location, s:bufname)
         let s:bufnr = bufnr('%')
         let s:winnr = winnr()
         cal s:set_local_options()
