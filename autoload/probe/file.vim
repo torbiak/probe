@@ -50,7 +50,7 @@ function! probe#file#scan()
     " recursively scan for files
     let s:file_caches[dir] = s:scan_files(dir, [], 0, {})
 
-    if g:probe_cache_dir
+    if g:probe_cache_dir != ''
         cal s:save_cache(dir, s:file_caches[dir])
     endif
 
