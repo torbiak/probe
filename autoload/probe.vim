@@ -506,7 +506,7 @@ endfunction
 
 function! probe#up_dir()
     if s:orig_working_dir == ''
-        cal s:set_orig_working_dir(getcwd())
+        cal probe#set_orig_working_dir(getcwd())
     endif
     exe printf('cd %s', fnamemodify(getcwd(), ':h'))
     let s:candidates = g:Probe_scan()
