@@ -341,11 +341,13 @@ function! s:update_matches()
 endfunction
 
 function! s:num_matches()
-    if line('$') == 1 && getline(1) == ''
-        return 0
-    else
-        return line('$')
+    if line('$') == 1
+        let line = getline(1)
+        if line == '' || line ==# s:no_matches_message
+            return 0
+        endif
     endif
+    return line('$')
 endfunction
 
 function! s:selected_match()
