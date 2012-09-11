@@ -257,11 +257,12 @@ function! probe#accept(split)
 
     if num_matches > 0
         cal s:select_appropriate_window()
-        if a:split ==? 'split' || &modified
-            split
-        endif
-        if a:split ==? 'vsplit'
-            vsplit
+        if a:split ==? 'split'
+            new
+        elseif a:split ==? 'vsplit'
+            vnew
+        elseif &modified
+            new
         endif
         cal g:Probe_open(dir . '/' . selection)
     endif
