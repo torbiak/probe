@@ -56,8 +56,8 @@ specificity of substring mode can be useful.
 
 COMMAND MAPPINGS                                      *probe-command-mappings*
 
-If no mappings to the probe file and buffer finder commands aren't already
-defined, the following will be:
+If mappings to the probe file and buffer finder commands aren't already
+defined the following will be:
 
     <Leader>f  open the file finder
     <Leader>b  open the buffer finder
