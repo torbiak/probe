@@ -24,6 +24,7 @@ let s:default_key_bindings = {
     \ 'select_prev': '<c-p>',
     \ 'accept_split': '<c-s>',
     \ 'accept_vsplit': '<c-v>',
+    \ 'accept_tab': '<c-t>',
     \ 'refresh_cache': ['<f5>', '<c-r>'],
     \ 'up_dir': '<c-y>',
 \ }
@@ -248,6 +249,10 @@ function! probe#accept_vsplit()
     cal probe#accept('vsplit')
 endfunction
 
+function! probe#accept_tab()
+    cal probe#accept('tab')
+endfunction
+
 function! probe#accept(split)
     " Get match information before closing the probe buffer.
     let selection = s:selected_match()
@@ -264,7 +269,15 @@ function! probe#accept(split)
         elseif &modified
             new
         endif
+        if a:split ==? 'tab'
+            tabnew
+        endif
         cal g:Probe_open(dir . '/' . selection)
+    endif
+    " Close the window if the user cancelled opening a file after seeing the
+    " 'Swap file already exists!' dialog.
+    if bufname('') ==# ''
+        close
     endif
 endfunction
 

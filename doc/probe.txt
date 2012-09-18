@@ -76,6 +76,7 @@ Next match               <C-n>
 Open selected match      <Enter>
 Open in split            <C-s>
 Open in vsplit           <C-v>
+Open in new tab          <C-t>
 Cancel                   <C-c> or <Esc>, if available
 Refresh cache            <C-r> or <F5>
 
@@ -198,6 +199,9 @@ OPTIONS                                                        *probe-options*
 
     accept_vsplit                                               default: <c-v>
         open the selected match in a vertically split window
+
+    accept_tab                                                  default: <c-t>
+        open the selected match in a new tab
 
     refresh_cache                                         default: <c-r>, <f5>
         delete the current cache and rescan for candidates
