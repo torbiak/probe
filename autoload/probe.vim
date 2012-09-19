@@ -13,9 +13,9 @@ let s:candidates = []
 let s:prompt_input = ''
 let s:prev_prompt_input = ''
 
-" Character-wise caching
-let s:match_cache = {}
-let s:match_cache_order = []
+" Query result caching
+let s:cached_matches = {}
+let s:cached_matches_order = []
 let s:max_match_cache_size = 10
 
 " Key bindings
@@ -62,6 +62,7 @@ function! probe#open(scan, open, refresh)
     let s:prompt_input = ''
     let s:candidates = g:Probe_scan()
     let s:time_spent = 0.0 " for benchmarking
+    cal s:clear_cached_matches()
     cal s:update_matches()
 endfunction
 
@@ -211,7 +212,7 @@ function! probe#select_prev()
 endfunction
 
 function! probe#refresh_cache()
-    let s:match_cache = {}
+    cal s:clear_cached_matches()
     cal s:reset_matches()
     cal g:Probe_refresh()
     let s:candidates = g:Probe_scan()
@@ -296,21 +297,6 @@ function! s:select_appropriate_window()
     endwhile
 endfunction
 
-function! s:cache_matches()
-    let pattern = s:prompt_input
-    if len(s:prompt_input) > 0
-        let s:match_cache[pattern] = getbufline(s:bufnr, 0, '$')
-        cal add(s:match_cache_order, pattern)
-    endif
-    if len(s:match_cache) > s:max_match_cache_size
-        let oldest_key = s:match_cache_order[0]
-        let s:match_cache_order = s:match_cache_order[1:]
-        if count(s:match_cache_order, oldest_key) == 0
-            cal remove(s:match_cache, oldest_key)
-        endif
-    endif
-endfunction
-
 function! s:filter()
     if s:num_matches() > 0 && len(s:prompt_input) > 0
         exe printf('silent! g!#%s#d', escape(s:pattern(s:prompt_input), '#'))
@@ -319,16 +305,16 @@ endfunction
 
 function! s:update_matches()
     let start_time = reltime()
-    if has_key(s:match_cache, s:prompt_input)
+    if has_key(s:cached_matches, s:prompt_input)
         silent! %delete
-        cal setline(1, s:match_cache[s:prompt_input])
+        cal setline(1, s:cached_matches[s:prompt_input])
     elseif s:is_search_narrower()
         cal s:filter()
     else
         cal s:reset_matches()
         cal s:filter()
     endif
-    cal s:cache_matches()
+    cal s:add_cached_matches(s:prompt_input, getbufline(s:bufnr, 0, '$'))
 
     let nmatches = s:num_matches()
     if nmatches < g:probe_scoring_threshold && nmatches > 0
@@ -529,4 +515,25 @@ function! probe#up_dir()
     exe printf('cd %s', fnamemodify(getcwd(), ':h'))
     let s:candidates = g:Probe_scan()
     cal s:update_matches()
+endfunction
+
+
+function! s:add_cached_matches(query, matches)
+    if a:query == ''
+        return
+    endif
+    let s:cached_matches[a:query] = a:matches
+    cal add(s:cached_matches_order, a:query)
+
+    if len(s:cached_matches) > s:max_match_cache_size
+        let oldest_key = remove(s:cached_matches_order, 0)
+        if count(s:cached_matches_order, oldest_key) == 0
+            cal remove(s:cached_matches, oldest_key)
+        endif
+    endif
+endfunction
+
+function! s:clear_cached_matches()
+    let s:cached_matches = {}
+    let s:cached_matches_order = []
 endfunction
