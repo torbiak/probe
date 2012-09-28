@@ -273,7 +273,11 @@ function! probe#accept(split)
         if a:split ==? 'tab'
             tabnew
         endif
-        cal g:Probe_open(dir . '/' . selection)
+        if g:Probe_scan == function('probe#file#scan')
+            cal g:Probe_open(dir . '/' . selection)
+        else
+            cal g:Probe_open(selection)
+        endif
     endif
     " Close the window if the user cancelled opening a file after seeing the
     " 'Swap file already exists!' dialog.
