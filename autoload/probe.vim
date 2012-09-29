@@ -255,29 +255,31 @@ function! probe#accept_tab()
 endfunction
 
 function! probe#accept(split)
+    if s:num_matches() == 0
+        cal probe#close()
+        return
+    endif
+
     " Get match information before closing the probe buffer.
     let selection = s:selected_match()
-    let num_matches = s:num_matches()
     let dir = getcwd()
     cal probe#close()
 
-    if num_matches > 0
-        cal s:select_appropriate_window()
-        if a:split ==? 'split'
-            new
-        elseif a:split ==? 'vsplit'
-            vnew
-        elseif &modified
-            new
-        endif
-        if a:split ==? 'tab'
-            tabnew
-        endif
-        if g:Probe_scan == function('probe#file#scan')
-            cal g:Probe_open(dir . '/' . selection)
-        else
-            cal g:Probe_open(selection)
-        endif
+    cal s:select_appropriate_window()
+    if a:split ==? 'split'
+        new
+    elseif a:split ==? 'vsplit'
+        vnew
+    elseif &modified
+        new
+    endif
+    if a:split ==? 'tab'
+        tabnew
+    endif
+    if g:Probe_scan == function('probe#file#scan')
+        cal g:Probe_open(dir . '/' . selection)
+    else
+        cal g:Probe_open(selection)
     endif
     " Close the window if the user cancelled opening a file after seeing the
     " 'Swap file already exists!' dialog.
