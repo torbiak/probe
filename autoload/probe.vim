@@ -306,6 +306,7 @@ endfunction
 function! s:filter()
     if s:num_matches() > 0 && len(s:prompt_input) > 0
         exe printf('silent! g!#%s#d', escape(s:pattern(s:prompt_input), '#'))
+        call histdel('search', -1)
     endif
 endfunction
 
