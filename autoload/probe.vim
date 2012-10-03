@@ -216,6 +216,7 @@ function! probe#refresh_cache()
     cal s:reset_matches()
     cal g:Probe_refresh()
     let s:candidates = g:Probe_scan()
+    cal s:reset_matches()
     cal s:update_matches()
 endfunction
 
