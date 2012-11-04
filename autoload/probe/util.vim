@@ -3,6 +3,7 @@
 " looked attractive.
 function! probe#util#rshash(string)
 " Robert Sedgwick's hash function from Algorithms in C.
+" returns a hexadecimal string
     let b = 378551
     let a = 63689
     let hash = 0
@@ -10,5 +11,5 @@ function! probe#util#rshash(string)
         let hash = hash * a + char2nr(c)
         let a = a * b
     endfor
-    return hash
+    return printf('%x', hash)
 endfunction

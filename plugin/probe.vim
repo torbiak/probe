@@ -16,11 +16,14 @@ if !exists('g:probe_max_file_cache_size')
     let g:probe_max_file_cache_size = 100000
 endif
 
+if !exists('g:probe_cache_repo_branches')
+    let g:probe_cache_repo_branches = 1
+endif
+
 if !exists('g:probe_max_height')
     let g:probe_max_height = 10
 endif
 
-"TODO
 if !exists('g:probe_reverse_sort')
     let g:probe_reverse_sort = 0
 endif

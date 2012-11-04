@@ -1,9 +1,15 @@
-" File caching
+" File caching vars
+" If g:probe_cache_repo_branches is set repository caches are indexed by root
+" directory and VCS branch, while normal (ie. directories without a VCS metadir
+" or directories scanned using probe#file#find instead of
+" probe#file#find_in_repo) are indexed by path.
 let s:file_caches = {}
 let s:file_cache_order = []
 let s:max_file_caches = 10
+let s:hash = ''
 
 function! probe#file#find()
+    let s:hash = probe#util#rshash(getcwd())
     cal probe#open(
         \ function('probe#file#scan'),
         \ function('probe#file#open'),
@@ -11,10 +17,17 @@ function! probe#file#find()
 endfunction
 
 function! probe#file#find_in_repo()
+    let repo_root = s:find_repo_root()
+    if repo_root == ''
+        cal probe#file#find()
+        return
+    endif
     let orig_dir = getcwd()
-    let repo_root = probe#file#find_repo_root()
-    if repo_root != ''
-        exe printf('cd %s', repo_root)
+    exe printf('cd %s', repo_root)
+    if g:probe_cache_repo_branches
+        let s:hash = probe#util#rshash(repo_root . s:branch())
+    else
+        let s:hash = probe#util#rshash(repo_root)
     endif
     cal probe#open(
         \ function('probe#file#scan'),
@@ -24,21 +37,20 @@ function! probe#file#find_in_repo()
 endfunction
 
 function! probe#file#scan()
-    let dir = getcwd()
     " use cache if possible
-    if has_key(s:file_caches, dir)
-        return s:file_caches[dir]
+    if has_key(s:file_caches, s:hash)
+        return s:file_caches[s:hash]
     endif
-    let cache_filepath = s:cache_filepath(dir)
+    let cache_filepath = s:cache_filepath()
     if g:probe_cache_dir != '' && filereadable(cache_filepath)
-        let s:file_caches[dir] = readfile(cache_filepath)
-        return s:file_caches[dir]
+        let s:file_caches[s:hash] = readfile(cache_filepath)
+        return s:file_caches[s:hash]
     endif
 
     " init new cache
-    if !has_key(s:file_caches, dir)
-        let s:file_caches[dir] = []
-        cal add(s:file_cache_order, dir)
+    if !has_key(s:file_caches, s:hash)
+        let s:file_caches[s:hash] = []
+        cal add(s:file_cache_order, s:hash)
     endif
 
     " pare caches
@@ -48,14 +60,14 @@ function! probe#file#scan()
     endif
 
     " recursively scan for files
-    let s:file_caches[dir] = s:scan_files(dir, [], 0, {})
+    let s:file_caches[s:hash] = s:scan_files(getcwd(), [], 0, {})
 
     if g:probe_cache_dir != ''
-        cal s:save_cache(dir, s:file_caches[dir])
+        cal s:save_cache(s:cache_filepath(), s:file_caches[s:hash])
     endif
 
     cal prompt#render()
-    return s:file_caches[dir]
+    return s:file_caches[s:hash]
 endfunction
 
 function! probe#file#open(filepath)
@@ -65,11 +77,10 @@ function! probe#file#open(filepath)
 endfunction
 
 function! probe#file#refresh()
-    let dir = getcwd()
-    if has_key(s:file_caches, dir)
-        unlet s:file_caches[dir]
+    if has_key(s:file_caches, s:hash)
+        unlet s:file_caches[s:hash]
     endif
-    cal delete(s:cache_filepath(dir))
+    cal delete(s:cache_filepath())
 endfunction
 
 
@@ -114,24 +125,25 @@ function! s:match_some(str, patterns)
     return 0
 endfunction
 
-function! s:save_cache(dir, files)
+function! s:save_cache(filename, files)
     if !isdirectory(g:probe_cache_dir)
         cal mkdir(g:probe_cache_dir)
     endif
-    cal writefile(a:files, s:cache_filepath(a:dir))
+    cal writefile(a:files, a:filename)
 endfunction
 
-function! s:cache_filepath(dir)
-    return printf('%s/%x', g:probe_cache_dir, probe#util#rshash(a:dir))
+function! s:cache_filepath()
+    return printf('%s/%s', g:probe_cache_dir, s:hash)
 endfunction
 
-function! probe#file#find_repo_root()
-    let meta_dir_pattern = '\v/\.(git|hg|svn|bzr)\n'
+function! s:find_metadir()
+    let metadir_pattern = '\v/\.(git|hg|svn|bzr)>'
     let orig_dir = getcwd()
     let dir = orig_dir
     while 1
-        if globpath(dir, '.*', 1) =~ meta_dir_pattern
-            return dir
+        let metadir = matchstr(globpath(dir, '.*', 1), metadir_pattern)
+        if metadir != ''
+            return dir . metadir
         endif
         let parent = fnamemodify(dir, ':h')
         if parent ==# dir
@@ -141,4 +153,32 @@ function! probe#file#find_repo_root()
         let dir = parent
     endwhile
     return ''
+endfunction
+
+function! s:find_repo_root()
+    let metadir = s:find_metadir()
+    if metadir == ''
+        return ''
+    else
+        return fnamemodify(metadir, ':h')
+    endif
+endfunction
+
+function! s:branch()
+    let metadir_name = fnamemodify(s:find_metadir(), ':t')
+    let branch_cmds = {
+        \'.git': 'git symbolic-ref -q HEAD',
+        \'.hg': 'hg branch',
+    \}
+    if index(keys(branch_cmds), metadir_name) == -1
+        return ''
+    endif
+
+    let branch = system(branch_cmds[metadir_name])
+    if v:shell_error != 0
+        return ''
+    endif
+    " With vim 7.3 on OSX 10.7.4 system() was appending a NUL to the end.
+    " Haven't figured out why yet.
+    return substitute(branch, '\%x00', '', 'g')
 endfunction
