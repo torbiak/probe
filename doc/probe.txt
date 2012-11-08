@@ -136,7 +136,7 @@ OPTIONS                                                        *probe-options*
 |g:probe_cache_repo_branches|                    *g:probe_cache_repo_branches*
     If true, maintain separate caches for different branches of a repository.
     Works for git and mercurial so far.
-    Default: (boolean) 0
+    Default: (boolean) 1
 
 |g:probe_max_height|                                      *g:probe_max_height*
     Maximum height of the match window.
