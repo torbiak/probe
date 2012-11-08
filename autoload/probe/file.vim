@@ -147,12 +147,10 @@ function! s:find_metadir()
         endif
         let parent = fnamemodify(dir, ':h')
         if parent ==# dir
-            exe printf('cd %s', orig_dir)
-            break
+            return ''
         endif
         let dir = parent
     endwhile
-    return ''
 endfunction
 
 function! s:find_repo_root()
