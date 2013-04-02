@@ -401,8 +401,8 @@ endfunction
 
 function! s:score_substrings(substrings, match)
     let score = 0
-    let prev_i = 0
-    let i = 0
+    let prev_i = -1
+    let i = -1
 
     for substring in a:substrings
         let i = stridx(a:match, substring, prev_i)
@@ -416,7 +416,7 @@ function! s:score_substrings(substrings, match)
         if i == len(a:match) - 1
             let score += 1
         endif
-        if prev_i && prev_i == i - 1
+        if prev_i >= 0 && prev_i == i - 1
             let score += 1
         endif
         let prev_i = i
