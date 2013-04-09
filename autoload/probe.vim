@@ -1,5 +1,4 @@
 " Match window
-let g:probe_max_height = 10
 let s:height = 0
 let s:bufname = '--probe----o'
 let s:bufnr = -1
