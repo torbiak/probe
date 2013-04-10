@@ -89,8 +89,6 @@ Cursor right             <C-f> or <Right>
 Cursor left              <C-b> or <Left>
 Delete                   <Del> or <C-d>
 
-Up a directory           <C-y>
-
 NOTE: If c-s doesn't work your terminal might be eating it for flow control
 purposes. Consider disabling flow control (eg. stty -ixoff -ixon).
 
@@ -240,9 +238,6 @@ OPTIONS                                                        *probe-options*
 
     cursor_right                                                default: <c-f>
         move the cursor forward one character
-
-    up_dir                                                      default: <c-y>
-        search in the parent directory (doesn't apply to all finders)
 
 ACKNOWLEDGEMENTS                                      *probe-acknowledgements*
 

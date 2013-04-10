@@ -25,7 +25,6 @@ let s:default_key_bindings = {
     \ 'accept_vsplit': '<c-v>',
     \ 'accept_tab': '<c-t>',
     \ 'refresh_cache': ['<f5>', '<c-r>'],
-    \ 'up_dir': '<c-y>',
 \ }
 
 " Finder functions (for finding files, buffers, etc.)
@@ -514,16 +513,6 @@ endfunction
 function! s:is_path_separator(char)
     return a:char =~ '[/\\]'
 endfunction
-
-function! probe#up_dir()
-    if s:orig_working_dir == ''
-        cal probe#set_orig_working_dir(getcwd())
-    endif
-    exe printf('cd %s', fnamemodify(getcwd(), ':h'))
-    let s:candidates = g:Probe_scan()
-    cal s:update_matches()
-endfunction
-
 
 function! s:add_cached_matches(query, matches)
     if a:query == ''
