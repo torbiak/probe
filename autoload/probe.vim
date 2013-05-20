@@ -17,6 +17,8 @@ let s:cached_matches = {}
 let s:cached_matches_order = []
 let s:max_match_cache_size = 10
 
+let s:saved_options = {}
+
 " Key bindings
 let s:default_key_bindings = {
     \ 'select_next': '<c-n>',
@@ -157,31 +159,28 @@ function! s:set_local_options()
 endfunction
 
 function! s:save_options()
-    let s:timeoutlen = &timeoutlen
-    let s:report = &report
-    let s:sidescroll = &sidescroll
-    let s:sidescrolloff = &sidescrolloff
-    let s:timeout = &timeout
-    let s:equalalways = &equalalways
-    let s:hlsearch = &hlsearch
-    let s:insertmode = &insertmode
-    let s:showcmd = &showcmd
-    let s:updatetime = &updatetime
-    let s:winminheight = &winminheight
+    let names = [
+        \ '&timeoutlen',
+        \ '&report',
+        \ '&sidescroll',
+        \ '&sidescrolloff',
+        \ '&timeout',
+        \ '&equalalways',
+        \ '&hlsearch',
+        \ '&insertmode',
+        \ '&showcmd',
+        \ '&updatetime',
+        \ '&winminheight',
+    \ ]
+    for name in names
+        let s:saved_options[name] = getwinvar(winnr(), name)
+    endfor
 endfunction
 
 function! s:restore_options()
-    let &timeoutlen = s:timeoutlen
-    let &report = s:report
-    let &sidescroll = s:sidescroll
-    let &sidescrolloff = s:sidescrolloff
-    let &timeout = s:timeout
-    let &equalalways = s:equalalways
-    let &hlsearch = s:hlsearch
-    let &insertmode = s:insertmode
-    let &showcmd = s:showcmd
-    let &updatetime = s:updatetime
-    let &winminheight = s:winminheight
+    for [name, value] in items(s:saved_options)
+        cal setwinvar(winnr(), name, value)
+    endfor
 endfunction
 
 function! probe#restore_vim_state()
