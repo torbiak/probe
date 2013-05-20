@@ -44,11 +44,18 @@ if !exists('g:probe_mappings')
     let g:probe_mappings = {}
 endif
 
-command! Probe :cal probe#file#find_in_repo()
-command! ProbeFindFile :cal probe#file#find()
-command! ProbeFindInRepo :cal probe#file#find_in_repo()
-command! ProbeFindBuffer :cal probe#buffer#find()
-command! ProbeRefresh :cal probe#refresh_cache()
+command! -bar Probe call probe#file#find_in_repo()
+command! ProbeFindFile call probe#file#find()
+command! ProbeFindInRepo call probe#file#find_in_repo()
+command! ProbeFindBuffer call probe#buffer#find()
+
+function! <SID>ProbeClearCache()
+    Probe
+    cal g:Probe_clear_cache()
+    cal probe#close()
+endfunction
+command! ProbeClearCache call <SID>ProbeClearCache()
+
 
 if !hasmapto(':Probe<CR>')
   silent! nnoremap <unique> <silent> <Leader>f :Probe<CR>

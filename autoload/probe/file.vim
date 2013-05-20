@@ -13,7 +13,7 @@ function! probe#file#find()
     cal probe#open(
         \ function('probe#file#scan'),
         \ function('probe#file#open'),
-        \ function('probe#file#refresh'))
+        \ function('probe#file#clear_cache'))
 endfunction
 
 function! probe#file#find_in_repo()
@@ -32,7 +32,7 @@ function! probe#file#find_in_repo()
     cal probe#open(
         \ function('probe#file#scan'),
         \ function('probe#file#open'),
-        \ function('probe#file#refresh'))
+        \ function('probe#file#clear_cache'))
     cal probe#set_orig_working_dir(orig_dir)
 endfunction
 
@@ -76,7 +76,7 @@ function! probe#file#open(filepath)
     exe printf('edit %s', filepath)
 endfunction
 
-function! probe#file#refresh()
+function! probe#file#clear_cache()
     if has_key(s:file_caches, s:hash)
         unlet s:file_caches[s:hash]
     endif

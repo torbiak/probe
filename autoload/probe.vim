@@ -30,17 +30,17 @@ let s:default_key_bindings = {
 " Finder functions (for finding files, buffers, etc.)
 function! probe#noop()
 endfunction
-unlet! g:Probe_scan g:Probe_open g:Probe_refresh
+unlet! g:Probe_scan g:Probe_open g:Probe_clear_cache
 let g:Probe_scan = function('probe#noop')
 let g:Probe_open = function('probe#noop')
-let g:Probe_refresh = function('probe#noop')
+let g:Probe_clear_cache = function('probe#noop')
 
 
-function! probe#open(scan, open, refresh)
-    unlet! g:Probe_scan g:Probe_open g:Probe_refresh
+function! probe#open(scan, open, clear_cache)
+    unlet! g:Probe_scan g:Probe_open g:Probe_clear_cache
     let g:Probe_scan = a:scan
     let g:Probe_open = a:open
-    let g:Probe_refresh = a:refresh
+    let g:Probe_clear_cache = a:clear_cache
 
     cal s:save_vim_state()
     cal s:create_buffer()
@@ -167,6 +167,7 @@ function! s:save_options()
     let s:insertmode = &insertmode
     let s:showcmd = &showcmd
     let s:updatetime = &updatetime
+    let s:winminheight = &winminheight
 endfunction
 
 function! s:restore_options()
@@ -180,6 +181,7 @@ function! s:restore_options()
     let &insertmode = s:insertmode
     let &showcmd = s:showcmd
     let &updatetime = s:updatetime
+    let &winminheight = s:winminheight
 endfunction
 
 function! probe#restore_vim_state()
@@ -212,7 +214,7 @@ endfunction
 function! probe#refresh_cache()
     cal s:clear_cached_matches()
     cal s:reset_matches()
-    cal g:Probe_refresh()
+    cal g:Probe_clear_cache()
     let s:candidates = g:Probe_scan()
     cal s:reset_matches()
     cal s:update_matches()

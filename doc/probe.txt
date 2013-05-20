@@ -111,8 +111,9 @@ COMMANDS                                                      *probe-commands*
 |:ProbeFindBuffer|                                          *:ProbeFindBuffer*
     Open the buffer finder.
 
-|:ProbeRefresh|                                                *:ProbeRefresh*
-    Delete the current cache and rescan for candidates.
+|:ProbeClearCache|                                          *:ProbeClearCache*
+    Delete the cache associated with the current definition of the Probe
+    command. 
 
 
 OPTIONS                                                        *probe-options*

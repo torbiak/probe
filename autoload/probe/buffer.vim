@@ -2,7 +2,7 @@ function! probe#buffer#find()
     cal probe#open(
         \ function('probe#buffer#scan'),
         \ function('probe#buffer#open'),
-        \ function('probe#buffer#refresh'))
+        \ function('probe#buffer#clear_cache'))
 endfunction
 
 function! probe#buffer#scan()
@@ -22,6 +22,6 @@ function! probe#buffer#open(name)
     exe printf('buffer %s', a:name)
 endfunction
 
-function! probe#buffer#refresh()
+function! probe#buffer#clear_cache()
     return
 endfunction
