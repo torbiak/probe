@@ -1,3 +1,5 @@
+let s:history = []
+let s:history_index = 0
 let s:hooks = {}
 let s:input = ''
 let s:pos = 0
@@ -14,6 +16,8 @@ let s:default_key_bindings = {
     \ 'cursor_right'    : ['<Right>', '<C-f>'],
     \ 'cursor_start'    : ['<C-a>'],
     \ 'delete'          : ['<Del>', '<C-d>'],
+    \ 'history_backward': ['<C-o>'],
+    \ 'history_forward' : ['<C-i>'],
 \}
 
 function! s:map_keys(key_bindings)
@@ -66,6 +70,18 @@ function! s:split_input()
     return [left, cursor, right]
 endfunction
 
+function! s:add_history(entry)
+    if len(s:history) > 0 && a:entry ==# s:history[-1]
+        return
+    endif
+    " Limit history to n entries.
+    if len(s:history) >= 100
+        let s:history = s:history[1:]
+    endif
+    cal add(s:history, a:entry)
+    let s:history_index = len(s:history)
+endfunction
+
 function! prompt#render()
     redraw
     let [left, cursor, right] = s:split_input()
@@ -88,7 +104,7 @@ function! prompt#handle_key(key)
     let s:input = left . a:key . cursor . right
     let s:pos += 1
     cal prompt#render()
-    cal s:change_hook()
+    cal s:on_input_change()
 endfunction
 
 function! prompt#handle_event(hook)
@@ -123,6 +139,11 @@ function! prompt#close()
     mapclear <buffer>
 endfunction
 
+function! s:on_input_change()
+    let s:history_index = len(s:history)
+    cal s:change_hook()
+endfunction
+
 function! s:change_hook()
     if has_key(s:hooks, 'change')
         cal s:hooks['change'](s:input)
@@ -130,6 +151,7 @@ function! s:change_hook()
 endfunction
 
 function! prompt#accept()
+    cal s:add_history(s:input)
     cal prompt#close()
 endfunction
 
@@ -141,7 +163,7 @@ function! prompt#backspace()
     endif
     let s:pos = s:pos == 0 ? 0 : s:pos-1
     cal prompt#render()
-    cal s:change_hook()
+    cal s:on_input_change()
 endfunction
 
 function! prompt#backspace_word()
@@ -167,7 +189,7 @@ function! prompt#backspace_word()
     endif
 
     cal prompt#render()
-    cal s:change_hook()
+    cal s:on_input_change()
 endfunction
 
 function! prompt#cancel()
@@ -178,14 +200,14 @@ function! prompt#delete_to_start()
     let s:input = s:input[s:pos :]
     let s:pos = 0
     cal prompt#render()
-    cal s:change_hook()
+    cal s:on_input_change()
 endfunction
 
 function! prompt#delete_to_end()
     let s:input = s:pos == 0 ? '' : s:input[: s:pos-1]
     let s:pos = len(s:input)
     cal prompt#render()
-    cal s:change_hook()
+    cal s:on_input_change()
 endfunction
 
 function! prompt#cursor_end()
@@ -215,6 +237,26 @@ endfunction
 function! prompt#delete()
     if s:pos < len(s:input)
         let s:input = s:input[: s:pos-1] . s:input[s:pos+1 :]
+        cal prompt#render()
+        cal s:on_input_change()
+    endif
+endfunction
+
+function! prompt#history_backward()
+    if s:history_index > 0
+        let s:history_index -= 1
+        let s:input = s:history[s:history_index]
+        let s:pos = len(s:input)
+        cal prompt#render()
+        cal s:change_hook()
+    endif
+endfunction
+
+function! prompt#history_forward()
+    if s:history_index < len(s:history) - 1
+        let s:history_index += 1
+        let s:input = s:history[s:history_index]
+        let s:pos = len(s:input)
         cal prompt#render()
         cal s:change_hook()
     endif

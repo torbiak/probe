@@ -240,6 +240,12 @@ OPTIONS                                                        *probe-options*
     cursor_right                                                default: <c-f>
         move the cursor forward one character
 
+    history_backward                                            default: <c-o>
+        set query to older history entry
+
+    history_forward                                             default: <c-i>
+        set query to newer history entry
+
 ACKNOWLEDGEMENTS                                      *probe-acknowledgements*
 
 Mad props to wincent for Command-T. It's a great plugin and his code is
