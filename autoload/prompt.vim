@@ -56,6 +56,15 @@ function! s:map_keys(key_bindings)
             cal prompt#map_key(key, 'prompt#handle_event', hook_name)
         endfor
     endfor
+
+    " Disable keys that can mess up the buffer.
+    for key in ['<insert>']
+        cal s:disable_key(key)
+    endfor
+endfunction
+
+function! s:disable_key(key)
+    exec printf("noremap <silent> <buffer> %s <nop>", a:key)
 endfunction
 
 function! prompt#map_key(key, func_name, ...)
