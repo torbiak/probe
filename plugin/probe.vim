@@ -24,6 +24,10 @@ if !exists('g:probe_max_height')
     let g:probe_max_height = 10
 endif
 
+if !exists('g:probe_persist')
+    let g:probe_persist = 0
+endif
+
 if !exists('g:probe_reverse_sort')
     let g:probe_reverse_sort = 0
 endif

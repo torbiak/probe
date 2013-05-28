@@ -3,10 +3,15 @@ let s:height = 0
 let s:bufname = '--probe----o'
 let s:bufnr = -1
 let s:winnr = -1
+let s:orig_window_count = -1
+let s:tabpagenr = -1
 let s:no_matches_message = '--NO MATCHES--'
 
 " Debugging and tweaking info
 let s:show_time_spent = 0
+
+" Persist probe after accepting a match?
+let s:persist = 0
 
 let s:candidates = []
 let s:prompt_input = ''
@@ -27,6 +32,7 @@ let s:default_key_bindings = {
     \ 'accept_vsplit': '<c-v>',
     \ 'accept_tab': '<c-t>',
     \ 'refresh_cache': ['<f5>', '<c-r>'],
+    \ 'toggle_persistence': '<c-b>',
 \ }
 
 " Finder functions (for finding files, buffers, etc.)
@@ -54,7 +60,6 @@ function! probe#open(scan, open, clear_cache)
         \ 'change': function('probe#on_prompt_change'),
     \ }, g:probe_mappings)
 
-    cal s:create_cleanup_autocommands()
     cal s:map_keys()
     cal s:setup_highlighting()
 
@@ -62,6 +67,7 @@ function! probe#open(scan, open, clear_cache)
     let s:prompt_input = ''
     let s:candidates = g:Probe_scan()
     let s:time_spent = 0.0 " for benchmarking
+    let s:persist = g:probe_persist
     cal s:clear_cached_matches()
     cal s:update_matches()
 endfunction
@@ -69,6 +75,7 @@ endfunction
 function! s:save_vim_state()
     cal s:save_options()
     let s:last_pattern = @/
+    let s:orig_window_count = winnr('$')
     let s:winrestcmd = winrestcmd() " TODO: Support older versions of vim.
     let s:saved_window_num = winnr()
     let s:orig_working_dir = ''
@@ -95,6 +102,7 @@ function! s:create_buffer()
         exe printf('silent! keepalt %s 1split %s', g:probe_window_location, s:bufname)
         let s:bufnr = bufnr('%')
         let s:winnr = winnr()
+        let s:tabpagenr = tabpagenr()
         cal s:set_local_options()
     else " still have the buffer from last time
         exe printf('silent! %s sbuffer %d', g:probe_window_location, s:bufnr)
@@ -102,12 +110,9 @@ function! s:create_buffer()
     endif
 endfunction
 
-function! s:create_cleanup_autocommands()
-    " Always cleanup, regardless how the buffer is left.
-    " (eg. <C-W q>, <C-W k>, etc)
-    autocmd! * <buffer>'
-    autocmd BufLeave <buffer> silent! probe#close()
-    autocmd BufUnload <buffer> silent! probe#restore_vim_state()
+function! s:focus_probe_window()
+    exe printf('tabnext %d', s:tabpagenr)
+    exe printf('%dwincmd w', bufwinnr(s:bufname))
 endfunction
 
 function! s:map_keys()
@@ -171,6 +176,7 @@ function! s:save_options()
         \ '&showcmd',
         \ '&updatetime',
         \ '&winminheight',
+        \ '&eventignore',
     \ ]
     for name in names
         let s:saved_options[name] = getwinvar(winnr(), name)
@@ -189,7 +195,10 @@ function! probe#restore_vim_state()
     if s:orig_working_dir != ''
         exe printf('cd %s', s:orig_working_dir)
     endif
-    exe s:winrestcmd
+    if winnr('$') == s:orig_window_count
+        " Probe didn't create any new windows, so restore the window layout.
+        exe s:winrestcmd
+    endif
     exe s:saved_window_num . 'wincmd w'
 endfunction
 
@@ -263,7 +272,9 @@ function! probe#accept(split)
     " Get match information before closing the probe buffer.
     let selection = s:selected_match()
     let dir = getcwd()
-    cal probe#close()
+    if !s:persist
+        cal probe#close()
+    endif
 
     cal s:select_appropriate_window()
     if a:split ==? 'split'
@@ -286,19 +297,30 @@ function! probe#accept(split)
     if bufname('') ==# ''
         close
     endif
+
+    if s:persist
+        cal s:focus_probe_window()
+        cal prompt#render()
+    endif
+endfunction
+
+function! probe#toggle_persistence()
+    let s:persist = !s:persist
+    cal s:update_statusline()
 endfunction
 
 
 function! s:select_appropriate_window()
 " select the first normal-ish window.
-    let initial = winnr()
+    let initial = s:saved_window_num
     while 1
         if &buflisted || &buftype !=? 'nofile'
             return
         endif
         wincmd w
         if initial == winnr()
-            return " Give up after cycling through all the windows.
+            " Give up after cycling through all the windows.
+            return
         endif
     endwhile
 endfunction
@@ -476,6 +498,9 @@ function! s:update_statusline()
     endif
     if s:show_time_spent
         let format .= printf(' in %.2fs', s:time_spent)
+    endif
+    if s:persist
+        let format .= ' [persist]'
     endif
     exe printf('setlocal stl=%s', escape(format, ' '))
 endfunction

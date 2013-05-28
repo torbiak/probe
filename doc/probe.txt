@@ -79,6 +79,7 @@ Open in vsplit           <C-v>
 Open in new tab          <C-t>
 Cancel                   <C-c> or <Esc>, if available
 Refresh cache            <C-r> or <F5>
+Toggle persistence       <C-b>
 
 Beginning of line        <C-a>
 End of line              <C-e>
@@ -88,6 +89,8 @@ Delete previous word     <C-w>
 Cursor right             <C-f> or <Right>
 Cursor left              <C-b> or <Left>
 Delete                   <Del> or <C-d>
+History backward         <C-o>
+History forward          <C-i>
 
 NOTE: If c-s doesn't work your terminal might be eating it for flow control
 purposes. Consider disabling flow control (eg. stty -ixoff -ixon).
@@ -141,6 +144,11 @@ OPTIONS                                                        *probe-options*
     Maximum height of the match window.
     Default: (number) 10
 
+|g:probe_persist|                                         *g:probe_max_height*
+    Persist the probe window after accepting a file by default. Persistence can
+    still be toggled using the binding for toggle_persistence.
+    Default: (boolean) 0
+
 |g:probe_reverse_sort|                                  *g:probe_reverse_sort*
     Reverse the sorting of scored matches, causing the best match to be at the
     top of the window.
@@ -156,7 +164,7 @@ OPTIONS                                                        *probe-options*
     Number of matches the search must be narrowed down to before the ranking
     algorithm will be applied.
     Default: (number) 400
-    
+
     This can be increased to give better results with shorter queries, but
     character-wise scoring is slow in VimL and responsiveness may suffer. If
     probe is stuttering while the last few characters of queries are being
@@ -221,7 +229,7 @@ OPTIONS                                                        *probe-options*
 
     delete                                                      default: <c-d>
         delete the character under the cursor
-        
+
     delete_to_start                                             default: <c-u>
         delete all characters between the cursor and the start of the line
 
@@ -246,6 +254,10 @@ OPTIONS                                                        *probe-options*
     history_forward                                             default: <c-i>
         set query to newer history entry
 
+    toggle_persistence                                          default: <c-b>
+        leave the probe window open after accepting a file. Useful for opening
+        a number of files that match the same query.
+
 ACKNOWLEDGEMENTS                                      *probe-acknowledgements*
 
 Mad props to wincent for Command-T. It's a great plugin and his code is
@@ -254,7 +266,8 @@ things.  Thanks to kien as well for his pure VimL fuzzy finder, ctrlp.vim,
 which gave me a bunch of ideas for how to make matching and scoring responsive
 without resorting to C.
 
-Greetz fly out to Oscar and line6 for their help during design and testing.
+Greetz fly out to Oscar and line6 for their help during design and testing, and
+to Ryan and Stephane for their continued feedback.
 
 
 LICENSE                                                        *probe-license*
