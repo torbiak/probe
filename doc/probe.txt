@@ -144,9 +144,9 @@ OPTIONS                                                        *probe-options*
     Maximum height of the match window.
     Default: (number) 10
 
-|g:probe_persist|                                         *g:probe_max_height*
-    Persist the probe window after accepting a file by default. Persistence can
-    still be toggled using the binding for toggle_persistence.
+|g:probe_persist|                                            *g:probe_persist*
+    Persist the probe window after accepting a file by default. Persistence
+    can still be toggled using the binding for toggle_persistence.
     Default: (boolean) 0
 
 |g:probe_reverse_sort|                                  *g:probe_reverse_sort*
