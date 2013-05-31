@@ -313,6 +313,7 @@ endfunction
 function! s:select_appropriate_window()
 " select the first normal-ish window.
     let initial = s:saved_window_num
+    exe printf('%dwincmd w', s:saved_window_num)
     while 1
         if &buflisted || &buftype !=? 'nofile'
             return
