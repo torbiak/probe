@@ -161,7 +161,6 @@ endfunction
 
 function! prompt#accept()
     cal s:add_history(s:input)
-    cal prompt#close()
 endfunction
 
 function! prompt#backspace()
