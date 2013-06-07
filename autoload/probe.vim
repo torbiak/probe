@@ -281,7 +281,7 @@ function! probe#accept(split)
         new
     elseif a:split ==? 'vsplit'
         vnew
-    elseif &modified
+    elseif &modified && !&hidden
         new
     endif
     if a:split ==? 'tab'
