@@ -32,7 +32,7 @@ let s:default_key_bindings = {
     \ 'accept_vsplit': '<c-v>',
     \ 'accept_tab': '<c-t>',
     \ 'refresh_cache': ['<f5>', '<c-r>'],
-    \ 'toggle_persistence': '<c-b>',
+    \ 'toggle_persistence': '<c-y>',
 \ }
 
 " Finder functions (for finding files, buffers, etc.)
