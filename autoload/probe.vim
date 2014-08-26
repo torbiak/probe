@@ -1,3 +1,6 @@
+" This module connects the prompt, file/buffer finders, and Vim windows/buffers
+" together. It also sorts and highlights the matches.
+
 " Match window
 let s:height = 0
 let s:bufname = '--probe----o'
@@ -10,14 +13,14 @@ let s:no_matches_message = '--NO MATCHES--'
 " Debugging and tweaking info
 let s:show_time_spent = 0
 
-" Persist probe after accepting a match?
+" Keep probe open after accepting a match?
 let s:persist = 0
 
 let s:candidates = []
 let s:prompt_input = ''
 let s:prev_prompt_input = ''
 
-" Query result caching
+" Query result caching, so matches don't need to be recomputed on a backspace.
 let s:cached_matches = {}
 let s:cached_matches_order = []
 let s:max_match_cache_size = 10
@@ -72,13 +75,12 @@ function! probe#open(scan, open, clear_cache)
     cal s:update_matches()
 endfunction
 
-function! s:save_vim_state()
-    cal s:save_options()
-    let s:last_pattern = @/
-    let s:orig_window_count = winnr('$')
-    let s:winrestcmd = winrestcmd() " TODO: Support older versions of vim.
-    let s:saved_window_num = winnr()
-    let s:orig_working_dir = ''
+function! probe#close()
+    cal probe#unload_buffer()
+    cal probe#restore_vim_state()
+    " Since prompt isn't being closed the status line needs to be cleared.
+    redraw
+    echo
 endfunction
 
 function! probe#set_orig_working_dir(dir)
@@ -189,6 +191,15 @@ function! s:restore_options()
     endfor
 endfunction
 
+function! s:save_vim_state()
+    cal s:save_options()
+    let s:last_pattern = @/
+    let s:orig_window_count = winnr('$')
+    let s:winrestcmd = winrestcmd() " TODO: Support older versions of vim.
+    let s:saved_window_num = winnr()
+    let s:orig_working_dir = ''
+endfunction
+
 function! probe#restore_vim_state()
     cal s:restore_options()
     let @/ = s:last_pattern
@@ -219,6 +230,7 @@ function! probe#select_prev()
     cal prompt#render()
 endfunction
 
+
 function! probe#refresh_cache()
     cal s:clear_cached_matches()
     cal s:reset_matches()
@@ -226,6 +238,11 @@ function! probe#refresh_cache()
     let s:candidates = g:Probe_scan()
     cal s:reset_matches()
     cal s:update_matches()
+endfunction
+
+function! probe#toggle_persistence()
+    let s:persist = !s:persist
+    cal s:update_statusline()
 endfunction
 
 
@@ -236,15 +253,6 @@ function! probe#unload_buffer()
     silent quit " quit in case the only other buffer is unlisted.
     exe 'silent! bunload! ' . s:bufnr
 endfunction
-
-function! probe#close()
-    cal probe#unload_buffer()
-    cal probe#restore_vim_state()
-    " Since prompt isn't being closed the status line needs to be cleared.
-    redraw
-    echo
-endfunction
-
 
 " Need functions without arguments to make key mapping easier.
 function! probe#accept_nosplit()
@@ -288,6 +296,7 @@ function! probe#accept(split)
         tabnew
     endif
     if g:Probe_scan == function('probe#file#scan')
+        " TODO: g:Probe_open should probably take pwd and the selection.
         cal g:Probe_open(dir . '/' . selection)
     else
         cal g:Probe_open(selection)
@@ -304,14 +313,8 @@ function! probe#accept(split)
     endif
 endfunction
 
-function! probe#toggle_persistence()
-    let s:persist = !s:persist
-    cal s:update_statusline()
-endfunction
-
-
 function! s:select_appropriate_window()
-" select the first normal-ish window.
+    " Select the first normal-ish window.
     let initial = s:saved_window_num
     exe printf('%dwincmd w', s:saved_window_num)
     while 1
@@ -404,8 +407,8 @@ function! s:is_search_narrower()
 endfunction
 
 function! probe#score_match(pattern, match)
-" Score a match based on how close pattern characters match to path separators,
-" other pattern characters, and the end of the match.
+    " Score a match based on how close pattern characters match to path
+    " separators, other pattern characters, and the end of the match.
     let match = a:match
     let pattern = a:pattern
     if s:smartcase() ==# '\c'
@@ -472,7 +475,7 @@ function! s:sort_matches_by_score(matches)
 endfunction
 
 function! s:ranking_compare(a, b)
-" Sort [<score>, <match>] pairs by score, match length.
+    " Sort [<score>, <match>] pairs by score, match length.
     let score_delta = a:a[0] - a:b[0]
     if score_delta != 0
         return score_delta
@@ -507,19 +510,19 @@ function! s:update_statusline()
 endfunction
 
 function! s:highlight_matches()
-" Adds syntax matches to help visualize what's being matched.
-"
-" The accuracy of the highlighting depends on how closely it mimics the
-" matching strategy (ie. the result of s:pattern), of course.
-"
-" For each character in the prompt input add a highlight match (matchadd) for
-" its first occurence in the filename.
+    " Adds syntax matches to help visualize what's being matched.
+    "
+    " The accuracy of the highlighting depends on how closely it mimics the
+    " matching strategy (ie. the result of s:pattern), of course.
+
     nohlsearch
     cal clearmatches()
     if s:num_matches() == 0
         return
     endif
 
+    " For each character in the prompt input add a highlight match (matchadd)
+    " for its first occurence in the filename.
     if stridx(s:prompt_input, ' ') == -1
         let i = 0
         while i < len(s:prompt_input)

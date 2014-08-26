@@ -1,3 +1,5 @@
+" File-finder. Scan dirs, cache file lists, and open selected files.
+
 " File caching vars
 " If g:probe_cache_repo_branches is set repository caches are indexed by root
 " directory and VCS branch, while normal (ie. directories without a VCS metadir

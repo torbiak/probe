@@ -1,3 +1,5 @@
+" Buffer finder.
+
 function! probe#buffer#find()
     cal probe#open(
         \ function('probe#buffer#scan'),

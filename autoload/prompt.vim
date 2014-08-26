@@ -1,3 +1,5 @@
+" Interactive line editing in the command-line mode area.
+
 let s:history = []
 let s:history_index = 0
 let s:hooks = {}
@@ -20,9 +22,28 @@ let s:default_key_bindings = {
     \ 'history_forward' : ['<C-i>'],
 \}
 
+function! prompt#open(hooks, key_bindings)
+    " Open an interactive prompt.
+    "
+    " a:hooks - dict of funcrefs. eg.
+    "   {'accept': function('myAccept'), 'change': function('myChange')}
+    "   accept - called after <enter> is pressed
+    "   cancel - called after <C-c> is pressed
+    "   change - called whenever the prompt's input changes
+    "
+    " a:key_bindings - dict of key mappings to override defaults. eg.
+    "   {'cancel': <c-q>}
+    " See the s:default_key_bindings dict for available operations.
+    let s:hooks = a:hooks
+    cal s:map_keys(a:key_bindings)
+    let s:input = ''
+    let s:pos = 0
+    cal prompt#render()
+endfunction
+
 function! s:map_keys(key_bindings)
-" a:key_bindings override the defaults for "special" operations, like cursor
-" control.
+    " a:key_bindings overrides the defaults for "special" operations, like
+    " cursor control.
 
     " Basic keys that aren't customizable.
     let lowercase = 'abcdefghijklmnopqrstuvwxyz'
@@ -63,6 +84,37 @@ function! s:map_keys(key_bindings)
     endfor
 endfunction
 
+function! prompt#close()
+    redraw
+    echo
+    mapclear <buffer>
+endfunction
+
+function! prompt#render()
+    redraw
+    let [left, cursor, right] = s:split_input()
+
+    echohl Comment
+    echon '> '
+
+    echohl None
+    echon left
+
+    echohl Underlined
+    echon cursor == '' ? ' ' : cursor
+
+    echohl None
+    echon right
+endfunction
+
+function! prompt#handle_key(key)
+    let [left, cursor, right] = s:split_input()
+    let s:input = left . a:key . cursor . right
+    let s:pos += 1
+    cal prompt#render()
+    cal s:on_input_change()
+endfunction
+
 function! s:disable_key(key)
     exec printf("noremap <silent> <buffer> %s <nop>", a:key)
 endfunction
@@ -91,61 +143,11 @@ function! s:add_history(entry)
     let s:history_index = len(s:history)
 endfunction
 
-function! prompt#render()
-    redraw
-    let [left, cursor, right] = s:split_input()
-
-    echohl Comment
-    echon '> '
-
-    echohl None
-    echon left
-
-    echohl Underlined
-    echon cursor == '' ? ' ' : cursor
-
-    echohl None
-    echon right
-endfunction
-
-function! prompt#handle_key(key)
-    let [left, cursor, right] = s:split_input()
-    let s:input = left . a:key . cursor . right
-    let s:pos += 1
-    cal prompt#render()
-    cal s:on_input_change()
-endfunction
-
-function! prompt#handle_event(hook)
-    exec printf('cal prompt#%s()', a:hook)
-    if has_key(s:hooks, a:hook)
-        cal s:hooks[a:hook]()
+function! prompt#handle_event(name)
+    exec printf('cal prompt#%s()', a:name)
+    if has_key(s:hooks, a:name)
+        cal s:hooks[a:name]()
     endif
-endfunction
-
-function! prompt#open(hooks, key_bindings)
-    " Operations can be overridden by giving functions via a:hooks.
-    " Key bindings to operations can be overridden via a:key_bindings.
-    "
-    " a:hooks - dict of funcrefs. eg.
-    "   {'accept': function('myAccept'), 'change': function('myChange')}
-    "   accept - called when <enter> is pressed
-    "   change - called when the prompt's input changes
-    "
-    " a:key_bindings - dict of key mappings to override defaults. eg.
-    "   {'cancel': <c-q>}
-    " See the 'special' dict in s:map_keys for available operations.
-    let s:hooks = a:hooks
-    cal s:map_keys(a:key_bindings)
-    let s:input = ''
-    let s:pos = 0
-    cal prompt#render()
-endfunction
-
-function! prompt#close()
-    redraw
-    echo
-    mapclear <buffer>
 endfunction
 
 function! s:on_input_change()
