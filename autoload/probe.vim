@@ -465,7 +465,8 @@ function! s:sort_matches_by_score(matches)
     let rankings = []
     for match in a:matches
         let score = probe#score_match(s:prompt_input, match)
-        cal add(rankings, [score, match])
+        let mtime = g:probe_sort_on_mtime ? getftime(match) : 0
+        cal add(rankings, [score, match, mtime])
     endfor
     let sorted = []
     for pair in sort(rankings, function('s:ranking_compare'))
@@ -479,6 +480,10 @@ function! s:ranking_compare(a, b)
     let score_delta = a:a[0] - a:b[0]
     if score_delta != 0
         return score_delta
+    endif
+    let mtime_delta = a:a[2] - a:b[2]
+    if mtime_delta != 0
+        return mtime_delta
     endif
     let length_delta = len(a:b[1]) - len(a:a[1])
     return length_delta

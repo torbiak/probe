@@ -32,6 +32,10 @@ if !exists('g:probe_reverse_sort')
     let g:probe_reverse_sort = 0
 endif
 
+if !exists('g:probe_sort_on_mtime')
+    let g:probe_sort_on_mtime = 1
+endif
+
 if !exists('g:probe_window_location')
     let g:probe_window_location = 'botright'
 endif

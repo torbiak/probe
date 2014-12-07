@@ -154,6 +154,10 @@ OPTIONS                                                        *probe-options*
     top of the window.
     Default: (boolean) 0
 
+|g:probe_sort_on_mtime|                                *g:probe_sort_on_mtime*
+    Sort matches by their modification times, if they are files.
+    Default: (boolean) 1
+
 |g:probe_window_location|                            *g:probe_window_location*
     Location of the match window. Possible values are |leftabove|,
     |rightbelow|, |topleft|, and |botright|, but |topleft| and |botright| seem
