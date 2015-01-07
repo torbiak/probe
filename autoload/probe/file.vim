@@ -74,7 +74,6 @@ endfunction
 
 function! probe#file#open(filepath)
     let filepath = escape(a:filepath, '\\|%# "')
-    let filepath = fnamemodify(filepath, ':.')
     exe printf('edit %s', filepath)
 endfunction
 
