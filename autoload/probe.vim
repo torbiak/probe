@@ -193,6 +193,7 @@ endfunction
 
 function! s:save_vim_state()
     cal s:save_options()
+    let s:unnamed_register = @"
     let s:last_pattern = @/
     let s:orig_window_count = winnr('$')
     let s:winrestcmd = winrestcmd() " TODO: Support older versions of vim.
@@ -202,6 +203,7 @@ endfunction
 
 function! probe#restore_vim_state()
     cal s:restore_options()
+    let @" = s:unnamed_register
     let @/ = s:last_pattern
     if s:orig_working_dir != ''
         exe printf('cd %s', s:orig_working_dir)
