@@ -38,6 +38,7 @@ function! prompt#open(hooks, key_bindings)
     cal s:map_keys(a:key_bindings)
     let s:input = ''
     let s:pos = 0
+    let s:history_index = len(s:history)
     cal prompt#render()
 endfunction
 
