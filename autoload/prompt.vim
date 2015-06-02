@@ -5,6 +5,7 @@ let s:history_index = 0
 let s:hooks = {}
 let s:input = ''
 let s:pos = 0
+let s:saved_input = ''
 
 let s:default_key_bindings = {
     \ 'accept'          : ['<CR>'],
@@ -39,6 +40,7 @@ function! prompt#open(hooks, key_bindings)
     let s:input = ''
     let s:pos = 0
     let s:history_index = len(s:history)
+    let s:saved_input = ''
     cal prompt#render()
 endfunction
 
@@ -133,6 +135,9 @@ function! s:split_input()
 endfunction
 
 function! s:add_history(entry)
+    if a:entry =~ '^\s*$'
+        return
+    endif
     if len(s:history) > 0 && a:entry ==# s:history[-1]
         return
     endif
@@ -254,6 +259,9 @@ function! prompt#delete()
 endfunction
 
 function! prompt#history_backward()
+    if s:history_index == len(s:history)
+        let s:saved_input = s:input
+    endif
     if s:history_index > 0
         let s:history_index -= 1
         let s:input = s:history[s:history_index]
@@ -264,11 +272,16 @@ function! prompt#history_backward()
 endfunction
 
 function! prompt#history_forward()
-    if s:history_index < len(s:history) - 1
-        let s:history_index += 1
-        let s:input = s:history[s:history_index]
-        let s:pos = len(s:input)
-        cal prompt#render()
-        cal s:change_hook()
+    if s:history_index > len(s:history) - 1
+        return
     endif
+    let s:history_index += 1
+    if s:history_index < len(s:history)
+        let s:input = s:history[s:history_index]
+    elseif s:history_index == len(s:history)
+        let s:input = s:saved_input
+    endif
+    let s:pos = len(s:input)
+    cal prompt#render()
+    cal s:change_hook()
 endfunction
