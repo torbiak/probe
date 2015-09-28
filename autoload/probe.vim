@@ -97,6 +97,7 @@ function! s:set_options()
     set sidescroll=0     " don't sidescroll in jumps
     set sidescrolloff=0  " don't sidescroll automatically
     set noequalalways    " don't auto-balance window sizes
+    set shellslash       " use unix-style paths
 endfunction
 
 function! s:create_buffer()
@@ -179,6 +180,7 @@ function! s:save_options()
         \ '&updatetime',
         \ '&winminheight',
         \ '&eventignore',
+        \ '&shellslash',
     \ ]
     for name in names
         let s:saved_options[name] = getwinvar(winnr(), name)
