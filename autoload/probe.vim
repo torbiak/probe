@@ -301,7 +301,7 @@ function! probe#accept(split)
     endif
     if g:Probe_scan == function('probe#file#scan')
         " TODO: g:Probe_open should probably take pwd and the selection.
-        cal g:Probe_open(dir . '/' . selection)
+        cal g:Probe_open(resolve(fnamemodify(dir . '/' . selection, ':.')))
     else
         cal g:Probe_open(selection)
     endif
