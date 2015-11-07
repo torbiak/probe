@@ -128,7 +128,7 @@ endfunction
 
 function! s:save_cache(filename, files)
     if !isdirectory(g:probe_cache_dir)
-        cal mkdir(g:probe_cache_dir)
+        cal mkdir(g:probe_cache_dir, 'p')
     endif
     cal writefile(a:files, a:filename)
 endfunction

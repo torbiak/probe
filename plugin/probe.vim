@@ -9,8 +9,10 @@ if !exists('g:probe_ignore_files')
 endif
 
 if !exists('g:probe_cache_dir')
-    let g:probe_cache_dir = expand('$HOME/.probe_cache')
+    let g:probe_cache_dir = '$HOME/.probe_cache'
 endif
+
+let g:probe_cache_dir = expand(g:probe_cache_dir)
 
 if !exists('g:probe_max_file_cache_size')
     let g:probe_max_file_cache_size = 100000
