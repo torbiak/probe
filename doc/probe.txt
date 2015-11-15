@@ -28,14 +28,14 @@ INSTALLATION                                              *probe-installation*
 
 USAGE                                                            *probe-usage*
 
-probe caches the filepaths under Vim's current working directory and offers an
-incremental search of that cache. When the number of matching filepaths is
-small enough they are ordered by a simple ranking algorithm that favours
-characters matching immediately after a path separator or another matched
-character, or at the beginning or end of a filepath. Because of this ranking
-algorithm the best approach to finding files using probe is to enter the first
-few characters of some path components as you work your way towards your
-target.
+probe caches the filepaths under Vim's current working directory or a VCS
+repository and offers an incremental search of that cache. When the number of
+matching filepaths is small enough they are ordered by a simple ranking
+algorithm that favours characters matching immediately after a path separator
+or another matched character, or at the beginning or end of a filepath. Because
+of this ranking algorithm the best approach to finding files using probe is to
+enter the first few characters of some path components as you work your way
+towards your target.
 
 Subsequence search mode:
 
@@ -118,7 +118,7 @@ COMMANDS                                                      *probe-commands*
 
 |:ProbeClearCache|                                          *:ProbeClearCache*
     Delete the cache associated with the current definition of the Probe
-    command. 
+    command.
 
 
 OPTIONS                                                        *probe-options*
