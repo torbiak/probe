@@ -40,8 +40,10 @@ target.
 Subsequence search mode:
 
     If the query doesn't contain any spaces, probe finds filepaths containing
-    the query as a subsequence. Thus, "ulmwhat" is a reasonable query to
-    search for /usr/local/man/whatis.
+    the query as a subsequence. Thus, "ulmwhat" is a reasonable query to search
+    for /usr/local/man/whatis. Parts of a query can be separated by slashes to
+    make them match within one path component, eg "u/l/m/what". Slashes can
+    also be used to specify a minimum depth: "////what".
 
 Substring search mode:
 

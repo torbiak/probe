@@ -454,14 +454,36 @@ function! s:score_substrings(substrings, match)
 endfunction
 
 function! s:pattern(prompt_input)
-    if stridx(s:prompt_input, ' ') == -1
-        let pattern = ['\V\^', s:smartcase()]
+    " Use (read: abuse) \zs and \ze to mark intended highlighted regions.
+    if stridx(a:prompt_input, '/') != -1 " path component query
+        let pattern = '\V\^' . s:smartcase()
+        let cont = 0 " Continuing within a path component?
         for c in split(a:prompt_input, '\zs')
-            cal add(pattern, printf('\[^%s]\*%s', c, c))
+            if c == '/'
+                let pattern .= '\[^/]\*\zs/\ze'
+                let cont = 0
+            else
+                if cont
+                    let pattern .= printf('\[^%s/]\*\zs%s\ze', c, c)
+                else
+                    let pattern .= printf('\.\*\zs%s\ze', c)
+                endif
+                let cont = 1
+            endif
+        endfor
+        return pattern
+    elseif stridx(a:prompt_input, ' ') != -1 " substring query
+        let pattern = ['\V\^', s:smartcase()]
+        for s in split(a:prompt_input)
+            cal add(pattern, printf('\.\*\zs%s\ze', s))
         endfor
         return join(pattern, '')
-    else
-        return '\V' . s:smartcase() . join(split(a:prompt_input), '\.\*')
+    else " subsequence query
+        let pattern = ['\V\^', s:smartcase()]
+        for c in split(a:prompt_input, '\zs')
+            cal add(pattern, printf('\[^%s]\*\zs%s\ze', c, c))
+        endfor
+        return join(pattern, '')
     endif
 endfunction
 
@@ -518,35 +540,30 @@ function! s:update_statusline()
     exe printf('setlocal stl=%s', escape(format, ' '))
 endfunction
 
+" Adds syntax matches to help visualize what's being matched.
 function! s:highlight_matches()
-    " Adds syntax matches to help visualize what's being matched.
-    "
-    " The accuracy of the highlighting depends on how closely it mimics the
-    " matching strategy (ie. the result of s:pattern), of course.
-
     nohlsearch
     cal clearmatches()
     if s:num_matches() == 0
         return
     endif
-
-    " For each character in the prompt input add a highlight match (matchadd)
-    " for its first occurence in the filename.
-    if stridx(s:prompt_input, ' ') == -1
-        let i = 0
-        while i < len(s:prompt_input)
-            let preceding_chars = i == 0 ? '' : s:prompt_input[:i-1]
-            let c = s:prompt_input[i]
-            let pattern = printf('\V\(%s\[^%s]\*\)\@<=%s', s:pattern(preceding_chars), c, c)
-            cal matchadd('ProbeMatch', pattern)
-            let i += 1
-        endwhile
-    else
-        for token in split(s:prompt_input)
-            let pattern = printf('\v(.{-})@<=%s', s:pattern(token))
-            cal matchadd('ProbeMatch', pattern)
-        endfor
+    if strlen(s:prompt_input) == 0
+        return
     endif
+
+    " Working from the end, add a highlighting pattern for each (\zs, \ze)
+    " pair. Later markers override earlier ones.
+    let pattern = s:pattern(s:prompt_input)
+    cal matchadd('ProbeMatch', pattern)
+    " Remove all but the first \zs. If all of them were removed the entire
+    " regex would be highlighted.
+    while stridx(pattern, '\zs') != strridx(pattern, '\zs')
+        let i = strridx(pattern, '\zs')
+        let front = strpart(pattern, 0, i)
+        let back = strpart(pattern, i)
+        let pattern = front . substitute(back, '\\z[se]', '', 'g')
+        cal matchadd('ProbeMatch', pattern)
+    endwhile
 endfunction
 
 function! s:is_path_separator(char)
