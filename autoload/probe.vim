@@ -410,20 +410,20 @@ function! s:is_search_narrower()
     return is_longer && appended_to_end
 endfunction
 
-function! probe#score_match(pattern, match)
-    " Score a match based on how close pattern characters match to path
-    " separators, other pattern characters, and the end of the match.
+function! probe#score_match(query, match)
+    " Score a match based on how close query characters match to path
+    " separators, other query characters, and the end of the match.
     let match = a:match
-    let pattern = a:pattern
+    let query = a:query
     if s:smartcase() ==# '\c'
         let match = tolower(match)
-        let pattern = tolower(pattern)
+        let query = tolower(query)
     endif
 
-    if stridx(pattern, ' ') == -1
-        let substrings = split(pattern, '\zs')
+    if stridx(query, ' ') != -1
+        let substrings = split(query, ' \+')
     else
-        let substrings = split(pattern, ' \+')
+        let substrings = split(query, '\zs')
     endif
     return s:score_substrings(substrings, match)
 endfunction
