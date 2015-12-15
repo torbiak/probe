@@ -138,7 +138,7 @@ function! s:cache_filepath()
 endfunction
 
 function! s:find_metadir()
-    let metadir_pattern = '\v/\.(git|hg|svn|bzr)>'
+    let metadir_pattern = '\v/\.(git|hg|svn|bzr)\n'
     let orig_dir = getcwd()
     let dir = orig_dir
     while 1
