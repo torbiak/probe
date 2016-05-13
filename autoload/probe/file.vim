@@ -144,7 +144,7 @@ function! s:find_metadir()
     while 1
         let metadir = matchstr(globpath(dir, '.*', 1), metadir_pattern)
         if metadir != ''
-            return dir . metadir
+            return dir . s:strip(metadir)
         endif
         let parent = fnamemodify(dir, ':h')
         if parent ==# dir
@@ -152,6 +152,10 @@ function! s:find_metadir()
         endif
         let dir = parent
     endwhile
+endfunction
+
+function! s:strip(string)
+    return substitute(a:string, '\n\+$', '', '')
 endfunction
 
 function! s:find_repo_root()
