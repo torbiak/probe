@@ -186,6 +186,14 @@ OPTIONS                                                        *probe-options*
 
     g:probe_ignore_files still functions normally when this option is set.
 
+|g:probe_use_gitignore|                              *g:probe_use_gitignore*
+    When in a git repository, ignore any file excluded by .gitignore (or 
+    other relevent exclude files) when scanning for files.
+    Default: (boolean) 0
+
+    g:probe_ignore_files and g:probe_use_wildignore still function normally
+    when this option is set.
+
 |g:probe_mappings|                                          *g:probe_mappings*
     Dict used to customize mappings. If a mapping is given for some operation
     the default mapping will not be created.

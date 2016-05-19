@@ -61,8 +61,12 @@ function! probe#file#scan()
         let s:file_cache_order = s:file_cache_order[1:]
     endif
 
-    " recursively scan for files
-    let s:file_caches[s:hash] = s:scan_files(getcwd(), [], 0, {})
+    " scan for files
+    if g:probe_use_gitignore && s:is_git()
+        let s:file_caches[s:hash] = s:scan_git()
+    else
+        let s:file_caches[s:hash] = s:scan_files(getcwd(), [], 0, {})
+    endif
 
     if g:probe_cache_dir != ''
         cal s:save_cache(s:cache_filepath(), s:file_caches[s:hash])
@@ -71,6 +75,29 @@ function! probe#file#scan()
     cal prompt#render()
     return s:file_caches[s:hash]
 endfunction
+
+function! s:is_git()
+    let metadir_name = fnamemodify(s:find_metadir(), ':t')
+    return metadir_name == '.git'
+endfunction
+
+function! s:scan_git()
+    let files = []
+    echo "Scanning " . s:find_repo_root()
+
+    let cmd = "git ls-files -c -o --exclude-standard;" .
+             \ "git submodule foreach -q " .
+             \ "'for file in $(git ls-files -c -o --exclude-standard); " .
+             \ "do echo \"$path/$file\"; done'"
+    for name in split(system(cmd), "\n")
+        if len(files) >= g:probe_max_file_cache_size
+            break
+        endif
+        cal add(files, fnamemodify(name, ':.'))
+    endfor
+    return files
+endfunction
+
 
 function! probe#file#open(filepath)
     let filepath = escape(a:filepath, '\\|%# "')
