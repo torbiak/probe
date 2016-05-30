@@ -1,6 +1,6 @@
 if exists('g:probe_loaded')
     "TODO
-    "finish 
+    "finish
 endif
 let g:probe_loaded = 1
 
@@ -52,6 +52,10 @@ endif
 
 if !exists('g:probe_mappings')
     let g:probe_mappings = {}
+endif
+
+if !exists('g:probe_use_gitignore')
+    let g:probe_use_gitignore = 0
 endif
 
 command! -bar Probe call probe#file#find_in_repo()
