@@ -5,7 +5,6 @@
 let s:height = 0
 let s:bufname = '--probe----o'
 let s:bufnr = -1
-let s:winnr = -1
 let s:orig_window_count = -1
 let s:tabpagenr = -1
 let s:no_matches_message = '--NO MATCHES--'
@@ -101,11 +100,10 @@ function! s:set_options()
 endfunction
 
 function! s:create_buffer()
+    let s:tabpagenr = tabpagenr()
     if s:bufnr == -1
         exe printf('silent! keepalt %s 1split %s', g:probe_window_location, s:bufname)
         let s:bufnr = bufnr('%')
-        let s:winnr = winnr()
-        let s:tabpagenr = tabpagenr()
         cal s:set_local_options()
     else " still have the buffer from last time
         exe printf('silent! %s sbuffer %d', g:probe_window_location, s:bufnr)
