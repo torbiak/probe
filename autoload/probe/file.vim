@@ -10,6 +10,11 @@ let s:file_cache_order = []
 let s:max_file_caches = 10
 let s:hash = ''
 
+" Matches metadir filenames as separate strings or in a newline-delimited
+" list. A delimiting newline is matched with zero-width, so just the metadir
+" name can be extracted from a string.
+let s:metadir_pattern = '\v/\.(git|hg|svn|bzr)\ze(\n|$)'
+
 function! probe#file#find()
     let s:hash = probe#util#rshash(getcwd())
     cal probe#open(
@@ -127,18 +132,23 @@ function! s:scan_files(dir, files, current_depth, scanned_dirs)
     " scan dir recursively
     redraw
     echo "Scanning " . a:dir
-    for name in split(globpath(a:dir, '*', !g:probe_use_wildignore), '\n')
-        if len(a:files) >= g:probe_max_file_cache_size
-            break
-        endif
-        if s:match_some(name, g:probe_ignore_files)
-            continue
-        endif
-        if isdirectory(name)
-            cal s:scan_files(name, a:files, a:current_depth+1, a:scanned_dirs)
-            continue
-        endif
-        cal add(a:files, fnamemodify(name, ':.'))
+    for pattern in ['*', '.[^.]*']
+        for name in globpath(a:dir, pattern, !g:probe_use_wildignore, 1)
+            if len(a:files) >= g:probe_max_file_cache_size
+                break
+            endif
+            if name =~# s:metadir_pattern
+                continue " skip metadirs
+            endif
+            if s:match_some(name, g:probe_ignore_files)
+                continue
+            endif
+            if isdirectory(name)
+                cal s:scan_files(name, a:files, a:current_depth+1, a:scanned_dirs)
+                continue
+            endif
+            cal add(a:files, fnamemodify(name, ':.'))
+        endfor
     endfor
 
     return a:files
@@ -165,13 +175,12 @@ function! s:cache_filepath()
 endfunction
 
 function! s:find_metadir()
-    let metadir_pattern = '\v/\.(git|hg|svn|bzr)\n'
     let orig_dir = getcwd()
     let dir = orig_dir
     while 1
-        let metadir = matchstr(globpath(dir, '.*', 1), metadir_pattern)
+        let metadir = matchstr(globpath(dir, '.*', 1), s:metadir_pattern)
         if metadir != ''
-            return dir . s:strip(metadir)
+            return dir . metadir
         endif
         let parent = fnamemodify(dir, ':h')
         if parent ==# dir
