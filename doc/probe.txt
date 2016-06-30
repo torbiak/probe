@@ -10,7 +10,6 @@ CONTENTS                                                      *probe-contents*
  6. Commands                |probe-commands|
  7. Acknowledgements        |probe-acknowledgements|
  8. License                 |probe-license|
- 9. Changelog               |probe-changelog|
 
 
 INTRODUCTION                                                     *probe-intro*
@@ -187,7 +186,7 @@ OPTIONS                                                        *probe-options*
     g:probe_ignore_files still functions normally when this option is set.
 
 |g:probe_use_gitignore|                              *g:probe_use_gitignore*
-    When in a git repository, ignore any file excluded by .gitignore (or 
+    When in a git repository, ignore any file excluded by .gitignore (or
     other relevent exclude files) when scanning for files.
     Default: (boolean) 0
 
@@ -306,10 +305,5 @@ NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
 LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-
-CHANGELOG                                                    *probe-changelog*
-
-Still in alpha. The interface might still undergo significant changes.
 
 vim:tw=78:ts=8:ft=help:norl:
