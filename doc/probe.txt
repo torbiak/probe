@@ -54,6 +54,10 @@ Subsequence mode typically results in good results in fewer keystrokes, but
 when searching for a filepath containing common characters the extra
 specificity of substring mode can be useful.
 
+Cached file lists are never invalidated automatically, so to have probe
+reflect new/deleted files clear the current cache by pressing <c-r> or <F5>
+from within a probe window or with the :ProbeClearCache command.
+
 
 COMMAND MAPPINGS                                      *probe-command-mappings*
 
