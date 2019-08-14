@@ -82,10 +82,6 @@ function! probe#close()
     echo
 endfunction
 
-function! probe#set_orig_working_dir(dir)
-    let s:orig_working_dir = a:dir
-endfunction
-
 function! s:set_options()
     set timeout          " ensure mappings timeout
     set timeoutlen=0     " respond immediately to mappings
@@ -198,16 +194,12 @@ function! s:save_vim_state()
     let s:orig_window_count = winnr('$')
     let s:winrestcmd = winrestcmd() " TODO: Support older versions of vim.
     let s:saved_window_num = winnr()
-    let s:orig_working_dir = ''
 endfunction
 
 function! probe#restore_vim_state()
     cal s:restore_options()
     let @" = s:unnamed_register
     let @/ = s:last_pattern
-    if s:orig_working_dir != ''
-        exe printf('cd %s', s:orig_working_dir)
-    endif
     if winnr('$') == s:orig_window_count
         " Probe didn't create any new windows, so restore the window layout.
         exe s:winrestcmd

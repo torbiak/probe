@@ -29,8 +29,7 @@ function! probe#file#find_in_repo()
         cal probe#file#find()
         return
     endif
-    let orig_dir = getcwd()
-    exe printf('cd %s', repo_root)
+    exe printf('lcd %s', repo_root)
     if g:probe_cache_repo_branches
         let s:hash = probe#util#rshash(repo_root . s:branch())
     else
@@ -40,7 +39,6 @@ function! probe#file#find_in_repo()
         \ function('probe#file#scan'),
         \ function('probe#file#open'),
         \ function('probe#file#clear_cache'))
-    cal probe#set_orig_working_dir(orig_dir)
 endfunction
 
 function! probe#file#scan()
